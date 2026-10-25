@@ -1,113 +1,62 @@
-# VoilaVoila CMS 1.1.0
+# VoilaVoila CMS
 
-Un CMS personnel autonome, en PHP, JavaScript et CSS. Un seul compte propriétaire, un profil public, des pages et des articles, des médias, des thèmes et des extensions. Interface sombre, responsive, en français et en anglais. SQLite intégré pour les pages, articles et révisions. Aucun abonnement, CDN, Composer, Node ou serveur MySQL nécessaire.
+**A small, self-hosted PHP + SQLite CMS for one owner.** Publish a personal profile, pages and posts; manage media; extend it with native themes and plugins.
 
-**Commencez par ouvrir INSTALLATION.html.**
+[Français](README.fr.md) · [Install](docs/en/installation.md) · [Upgrade from 1.0](docs/en/upgrade.md) · [Contribute](CONTRIBUTING.md) · [Releases](https://github.com/farhadtoor/voilavoila-cms/releases)
 
-## Installation sur un hébergement
+The current application version is **1.1.0**. The `main` branch also includes the bilingual project documentation and development checks. The original 1.0.0 and 1.1.0 archives are preserved as separate releases; they are not merged into one installation.
 
-1. Activez PHP **8.3 ou supérieur**, DOM, mbstring, fileinfo et **pdo_sqlite**. Activez aussi **GD** pour valider les images et **ZIP** pour les sauvegardes et modules. Mémoire recommandée : 256 Mo. Choisissez une branche PHP encore maintenue et ses correctifs disponibles.
-2. Décompressez le pack. Copiez **le contenu du dossier `voila-cms`**, fichiers commençant par un point compris, dans un dossier Web vide. Le CMS peut être installé dans un sous-dossier. Il utilise des liens `index.php?p=...`, sans réécriture d’URL obligatoire.
-3. Donnez au processus PHP le droit d’écrire dans `storage`. Le dossier `content/themes` et `content/plugins` doit être accessible en écriture pour installer des ZIP depuis l’administration. Sur un hébergement mutualisé, 755 pour les dossiers et 644 pour les fichiers suffisent souvent ; cela dépend du propriétaire Unix. N’utilisez pas 777.
-4. Ouvrez `https://votre-site.fr/install.php`. La première visite génère `storage/setup-key.php`.
-5. Téléchargez ce fichier **par SFTP**, ouvrez-le comme du texte et copiez la clé située après la première ligne PHP. Collez-la dans l’installateur. Créez votre nom de site, votre e-mail de gestion privé et votre mot de passe personnel (14 à 72 octets).
-6. Conservez **hors ligne** le code de récupération affiché une seule fois. La clé d’installation est supprimée, l’installateur se verrouille et votre espace s’ouvre.
-7. Dans « Mon profil & site », ajoutez votre bio, vos images et l’URL canonique HTTPS. Créez vos pages de mentions légales avec vos vraies informations.
+## What you can do
 
-L’administration distante refuse HTTP. Le site public doit lui aussi être servi en HTTPS au niveau de l’hébergeur. Les cookies, sessions et mots de passe ne doivent pas transiter en HTTP.
+- Publish a public profile, French/English pages and posts, drafts, private previews and scheduled posts.
+- Keep up to 15 content revisions and reject stale editor saves.
+- Upload JPG/JPEG, PNG, WebP and PDF files; version 1.1 preserves the original bytes and extension.
+- Choose between two native themes; install native API 1 theme/plugin ZIPs.
+- Use a private workspace, SEO metadata/sitemap/RSS and an optional external PASS link.
+- Export/restore editorial backups and import WordPress WXR 1.2 pages/posts.
+- Manage one owner with a server-side installation key, hashed password and offline recovery code.
 
-### Apache / OVH / hébergement mutualisé
+Pages/posts and revisions live in SQLite. PHP application access and error logs are separate text files. The UI and assets are served locally; the CMS needs no Composer, npm build or external database server.
 
-Le fichier `.htaccess` protège les dossiers internes. La base `storage/cms.sqlite`, les fichiers médias originaux et les journaux texte sont privés : le serveur doit refuser tout accès direct à `storage`. Le CMS sert les médias via `media.php`, après contrôle de visibilité. Les sessions et sauvegardes internes conservent leur enveloppe PHP de protection. `.user.ini` propose les limites d’envoi ; vérifiez leur prise en compte dans votre hébergement. PHP ZIP et GD doivent être activés dans votre offre, sinon leurs fonctions restent indisponibles avec un message explicite.
+## Quick local start
 
-### Nginx
+Requirements: **PHP 8.3+** with DOM, mbstring, fileinfo and PDO SQLite; GD with the required image codecs for images; ZIP for archives. Use a maintained PHP branch and current patches. Python, Node and Docker are development options, not CMS runtime requirements.
 
-Adaptez `docs/nginx.conf` : domaine, chemin, socket PHP-FPM et certificats réels. Si l’installation est dans un sous-dossier, adaptez les règles de protection à ce préfixe. Nginx ignore les `.htaccess`. Ne servez jamais ce pack avec un serveur de fichiers statiques.
+From the application folder:
 
-### Données hors de la racine Web
+```sh
+php bin/console.php status
+php bin/console.php install-key
+php -d memory_limit=256M -d upload_max_filesize=64M -d post_max_size=70M -S 127.0.0.1:8787 router.php
+```
 
-Vous pouvez définir `VV_STORAGE_PATH` sur un chemin privé absolu, accessible à PHP. Déplacez **tout** le contenu de `storage` avant de changer le chemin. Exemple de configuration serveur : `VV_STORAGE_PATH=/srv/private/voilavoila`. La clé d’installation, les médias et les sessions sont alors créés dans ce dossier. Le CMS ne déduit pas HTTPS d’un en-tête proxy non fiable. Derrière un proxy de confiance, définissez `VV_TRUSTED_PROXIES` avec ses adresses IP exactes, séparées par des virgules, et faites remplacer `X-Forwarded-Proto` par ce proxy.
+Keep the terminal open, visit [the local installer](http://127.0.0.1:8787/install.php), enter the generated key, create your owner account and store the one-time recovery code offline. The built-in PHP server is for local testing. For public hosting, follow the [HTTPS and storage deployment steps](docs/en/installation.md).
 
-## Sur Mac
+[Version-by-version references in both languages](docs/history/README.md) include the first release guide and validation.
 
-Ce pack contient le code source et un lanceur, pas un exécutable PHP universel. macOS n’inclut pas systématiquement PHP. Deux méthodes :
+## Scope
 
-- **PHP déjà disponible** : dans le dossier du CMS, exécutez `php bin/console.php status`, puis `php bin/console.php install-key`. Lancez `php -d memory_limit=256M -d upload_max_filesize=64M -d post_max_size=70M -S 127.0.0.1:8787 router.php`, puis ouvrez `http://127.0.0.1:8787`. Le fichier `Lancer-Mac.command` fait la même chose ; rendez-le exécutable avec `chmod +x Lancer-Mac.command` si nécessaire.
-- **Docker déjà disponible** : dans le dossier du CMS, exécutez `docker compose up -d --build`, puis `docker compose exec cms php bin/console.php install-key`. Ouvrez `http://127.0.0.1:8787`. Les données et modules sont conservés dans deux volumes Docker. `docker compose stop` arrête le CMS sans supprimer ces volumes.
+This is a single-owner personal CMS for moderate traffic. It has no public registration, multi-user roles, ticket sales or payment engine. The PASS plugin opens an existing HTTPS ticketing site. WordPress inspired some concepts; WordPress themes/plugins and `wp_*` functions are not compatible. WXR import does not fetch attachments or migrate plugin business data.
 
-Le serveur PHP intégré est réservé aux essais locaux. En Docker, le port est lié à 127.0.0.1. Pour héberger en ligne, configurez un serveur HTTPS et un proxy de confiance. Le chemin Docker est fourni mais n’a pas été exécuté dans l’environnement de validation de ce pack.
+Native PHP extensions run with the hosting process privileges. Only install code you trust. See [security design](docs/en/security.md) and the [reporting policy](SECURITY.md).
 
-## Fonctions livrées
+## Documentation and development
 
-| Espace | Fonctions |
-| --- | --- |
-| Vue d’ensemble | Compteurs calculés, contenus récents, état de l’installation, recherche Ctrl/⌘ K |
-| Articles et pages | Création, édition HTML simple, aperçu serveur, FR/EN avec repli, slugs, tags, résumés, images, brouillons, publication, programmation UTC, contenus privés, épinglage, menu, ordre, duplication, corbeille |
-| Révisions | 15 versions antérieures par contenu ; protection contre l’écrasement d’une version modifiée dans un autre onglet |
-| Profil public | Couverture, avatar, nom, bio, liens, localisation, contact, navigation et fil, recherche et partage |
-| Médias | Import JPG/JPEG/PNG/WebP/PDF, octets et extensions originaux conservés, texte alternatif, accès public ou privé, lien, téléchargement et suppression des médias non référencés |
-| Thèmes | Profil Or et Profil Graphite ; activation, installation ZIP au format natif et suppression des thèmes inactifs |
-| Extensions | Activation/désactivation, suppression des modules inactifs sans effacer leurs données, installation ZIP sans activation ; API actions, filtres, shortcodes et pages d’administration |
-| Atelier personnel | Notes privées, tâches textuelles `[ ]` / `[x]`, raccourcis, widget sur le tableau de bord |
-| Connexion PASS | URL HTTPS configurable, bouton de profil et shortcode `[pass]` ; logo de votre archive PASS |
-| Référencement | Méta-description, canonique, Open Graph, sitemap XML et RSS quand l’extension SEO est active et l’URL canonique renseignée |
-| Sécurité | Un seul propriétaire, pas d’inscription, mots de passe hachés, sessions privées expirantes, CSRF, contrôle d’origine, limitations de connexion, récupération, journal limité à 250 événements |
-| Journaux | `storage/logs/access.txt` et `storage/logs/error.txt`, consultation et téléchargement dans Sécurité, rotation à 5 Mo avec trois archives |
-| Outils | Sauvegarde ZIP portable avec médias, restauration avec confirmation et mot de passe, trois points de restauration, import WordPress WXR 1.2 |
+| Topic | English | Français |
+| --- | --- | --- |
+| Installation and recovery | [Guide](docs/en/installation.md) | [Guide](docs/fr/installation.md) |
+| 1.0 → 1.1 migration | [Guide](docs/en/upgrade.md) | [Guide](docs/fr/mise-a-jour.md) |
+| Architecture and versions | [Guide](docs/en/architecture.md) | [Guide](docs/fr/architecture.md) |
+| Security and privacy | [Guide](docs/en/security.md) | [Guide](docs/fr/securite.md) |
+| Native theme/plugin API | [SDK](sdk/API.en.md) | [SDK](sdk/API.md) |
+| Testing and limitations | [Guide](docs/en/testing.md) | [Guide](docs/fr/tests.md) |
+| GitHub publication | [Steps](docs/en/publishing.md) | [Étapes](docs/fr/publication.md) |
+| Community and maintenance | [Guide](docs/en/community.md) | [Guide](docs/fr/communaute.md) |
 
-La programmation est évaluée à chaque lecture : un article publié avec une date future devient visible à cette date, sans tâche cron ni envoi d’e-mail.
+For development checks, run `python3 tools/check_repo.py` and `python3 tests/run.py`. The tests use temporary application copies and synthetic data. See the testing guide before running them. CI is supplied for PHP 8.3/8.4/8.5; its first GitHub run remains to be completed. Historical release reports and current reproducible checks are distinguished in the guide.
 
-Les médias marqués publics sont accessibles à toute personne disposant du lien, même s’ils sont utilisés dans un brouillon. Choisissez « privé » pour un document de travail ; ne l’utilisez pas comme couverture publique. Un média privé demande une session propriétaire. Les PDF sont téléchargés en pièce jointe ; ils ne sont pas rendus dans une fenêtre PDF intégrée.
+## Contribute and get help
 
-## Sauvegarde et transfert
+Questions and project showcases: [Discussions](https://github.com/farhadtoor/voilavoila-cms/discussions). Reproducible bugs and scoped proposals: [Issues](https://github.com/farhadtoor/voilavoila-cms/issues). English and French are welcome. Read [CONTRIBUTING](CONTRIBUTING.md), [SUPPORT](SUPPORT.md), the [Code of Conduct](CODE_OF_CONDUCT.md) and [ROADMAP](ROADMAP.md).
 
-« Outils & sauvegardes » exporte les contenus, le profil, les médias et les données des extensions. Les identifiants, sessions, secrets serveur et fichiers exécutables ne sont pas exportés. Les sauvegardes contiennent des brouillons et notes privées : conservez-les dans un lieu privé.
-
-Limites : 8 Mo de données éditoriales par ZIP, 64 Mo de données décompressées au total, 2 000 médias et 10 000 contenus restaurés. Pour un site plus grand, sauvegardez le dossier du CMS et son stockage complet par SFTP, pendant une maintenance sans écriture en cours. Pour une copie SQLite brute, arrêtez les processus PHP avant de copier `cms.sqlite` et son éventuel journal de transaction. La sauvegarde ZIP du CMS fournit une lecture cohérente sans copier un fichier SQLite actif. La base SQLite utilise des transactions et des requêtes préparées. Le CMS charge encore les contenus dans son API de lecture en mémoire : il vise un profil personnel et un trafic modéré. Les réglages et données d’extensions sont limités à 8 Mo ; les sauvegardes portables conservent leurs plafonds propres.
-
-Une restauration remplace la liste des contenus et médias, conserve l’accès propriétaire, ne charge aucun code depuis le ZIP et crée d’abord un point complet. Les versions antérieures des articles ne sont pas réinjectées lors d’une restauration portable ; les corps, statuts, tags et paramètres éditoriaux le sont. Les fichiers de médias non référencés après restauration restent dans le stockage pour éviter une suppression irréversible. Un identifiant média existant ne peut pas recevoir un contenu binaire différent.
-
-Les trois points stockés sur le même serveur facilitent un retour en arrière. Téléchargez aussi une copie indépendante. Ils ne protègent pas contre la perte de l’hébergement.
-
-## WordPress et PASS
-
-Le CMS reprend les concepts de thèmes, extensions, points d’accroche et contenus de WordPress ; **ce n’est pas WordPress ni une couche de compatibilité de son API**. Un ZIP WordPress, les appels `wp_*`, la base `wp_options` ou `$wpdb` demandent un portage. L’installateur de modules refuse les archives sans manifeste natif `cms.json`.
-
-Sources de référence examinées : `voilavoila-pass-theme-1.5.0.zip`, `PASS-WordPress-Swizzonic-v1.12.1.zip` et `vv-admin-pass.zip` (PASS Administration 2.0.0). La présentation sombre et dorée, le profil, les raccourcis, l’atelier et les protections ont servi de base fonctionnelle. Ces archives ne sont pas embarquées comme dépendances.
-
-L’import WXR ajoute uniquement les pages/articles. Le réglage par défaut est « brouillon ». Aucun fichier distant n’est téléchargé. Les pièces jointes, comptes, commentaires, paramètres, modèles, blocs interactifs et données métier des plugins sont exclus. Il faut réimporter les médias manuellement, réinsérer leurs liens et adapter les shortcodes. Les textes légaux présents dans vos pages peuvent ainsi être importés puis relus ; le CMS n’invente pas de mentions à votre place.
-
-Le module natif **Connexion PASS** conserve la billetterie sur son installation actuelle et ouvre son URL. Il n’émet aucun billet, ne gère aucun paiement, ne migre aucune commande et n’ajoute pas de compte client au CMS. Les fonctions de sécurité de PASS liées aux clients, organisateurs ou paiements restent dans PASS.
-
-## Mises à jour et récupération
-
-- Avant une mise à jour, exportez une sauvegarde et copiez les fichiers du CMS.
-- Par SFTP, remplacez les fichiers du moteur, sans remplacer `storage`, vos modules personnalisés ou les volumes de données. Ne copiez jamais un dossier `storage` de démonstration sur votre site.
-- Pour une mise à jour d’une extension personnalisée, désactivez-la, sauvegardez son dossier, remplacez ses fichiers par SFTP, puis réactivez-la. L’installation ZIP ne remplace pas un module existant.
-- Si une extension plante pendant son chargement, elle est désactivée et un événement est journalisé. `admin.php?view=plugins&safe=1` ouvre l’administration en sautant les extensions pour cette requête. Si nécessaire, `php bin/console.php safe-mode` désactive toutes les extensions et rétablit Profil Or.
-- Accès perdu : utilisez le code hors ligne depuis la page de connexion. Le code ne fonctionne qu’une fois et un nouveau code est affiché. Avec l’accès serveur : `php bin/console.php reset-owner`. Il révoque toutes les sessions.
-- Aucun mécanisme automatique de mise à jour distante ou d’envoi d’e-mail n’est activé.
-
-La mise à jour depuis 1.0 est détaillée dans `MISE-A-JOUR-1.1.0.md`.
-
-Voir `docs/ARCHITECTURE.md`, `docs/SECURITE.md`, `sdk/API.md` et `docs/VALIDATION.md`.
-
-## Références officielles
-
-- https://fr.wordpress.org/download/
-- https://developer.wordpress.org/plugins/hooks/
-- https://developer.wordpress.org/themes/classic-themes/basics/template-hierarchy/
-- https://wordpress.org/documentation/article/tools-export-screen/
-- https://www.php.net/manual/fr/function.password-hash.php
-- https://www.php.net/manual/en/session.security.ini.php
-- https://www.php.net/supported-versions.php
-
-## Stockage et journaux en 1.1
-
-- `storage/cms.sqlite` : table `contents` avec colonnes des pages/articles, table `revisions` et table `cms_state` pour le propriétaire, réglages, métadonnées de médias et données d’extensions. Les contenus ne sont pas stockés dans le JSON des réglages.
-- `storage/media/<id>.jpg`, `.jpeg`, `.png`, `.webp` ou `.pdf` : véritables fichiers binaires, sans préfixe PHP. Le nom d’origine reste enregistré et proposé au téléchargement. Les images ne sont ni redimensionnées ni réencodées ; leurs métadonnées, y compris EXIF, sont conservées.
-- `storage/logs/access.txt` : date UTC, identifiant de requête, méthode, chemin sans paramètres, code HTTP, IP directe et durée pour les requêtes PHP du CMS. Les fichiers statiques ou requêtes bloquées avant PHP restent du ressort du journal du serveur Web.
-- `storage/logs/error.txt` : erreurs PHP et erreurs applicatives capturées. Les événements de gestion restent aussi dans le journal d’activité de l’administration.
-- Rotation séparée à 5 Mo, trois archives `access.1.txt` à `access.3.txt`, même principe pour les erreurs. Les journaux ne sont pas inclus dans la sauvegarde portable. Ils se téléchargent depuis Sécurité, avec authentification et CSRF.
-
-L’ancienne base JSON et les anciennes images enveloppées en PHP sont conservées dans le stockage de migration. Une image déjà transformée en PNG en 1.0 reste un PNG : les octets du JPEG antérieur ne peuvent pas être reconstitués. Les nouveaux imports conservent le format réellement envoyé.
+The code is MIT-licensed. The supplied PASS logo is excluded from that license; see [LICENSE](LICENSE) and [NOTICE](NOTICE). No WordPress or PASS ticketing engine is bundled.

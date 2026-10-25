@@ -1,0 +1,23 @@
+name: Feature request / Proposer une fonction
+description: Explain a need and a small proposed change / Décrire un besoin et une évolution précise.
+title: '[Idea] '
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case / Besoin ou usage
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed behavior / Comportement proposé
+      description: Keep the single-owner scope in mind / Conservez le principe d’un propriétaire unique.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and contribution / Alternatives et contribution
+      description: Could a native plugin solve it? Can you help test? / Une extension native suffirait-elle ? Pouvez-vous tester ?

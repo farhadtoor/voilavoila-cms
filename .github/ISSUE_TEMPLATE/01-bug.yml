@@ -1,0 +1,40 @@
+name: Bug report / Signaler un bug
+description: A reproducible problem without private data / Un problème reproductible sans données privées.
+title: '[Bug] '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: 'EN/FR welcome. For vulnerabilities, follow SECURITY.md. Never attach storage, logs, backups or credentials. / FR/EN acceptés. Pour une faille, suivez SECURITY.md. Ne joignez pas votre stockage, vos journaux, sauvegardes ou identifiants.'
+  - type: input
+    id: version
+    attributes:
+      label: CMS version / Version du CMS
+      placeholder: 1.1.0
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment / Environnement
+      description: PHP version, extensions, OS, Apache/Nginx/local, browser. No server secrets. / Versions et type de serveur, sans secret.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / Étapes pour reproduire
+      placeholder: '1. Open… / Ouvrir…'
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior / Résultat attendu et obtenu
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted details / Détails anonymisés
+      description: Minimal error excerpt or sanitized screenshot only / Court extrait ou capture anonymisée uniquement.

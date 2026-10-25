@@ -1,5 +1,7 @@
 # Développer un module natif
 
+[English](API.en.md)
+
 L’API est propre à VoilaVoila CMS (version 1). Elle ne définit pas les fonctions WordPress. Un module PHP est du code de confiance exécuté avec les droits de l’hébergement. Gardez les contenus et réglages dans le stockage, pas dans les fichiers du thème.
 
 ## Manifeste

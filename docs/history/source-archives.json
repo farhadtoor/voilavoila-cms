@@ -1,0 +1,16 @@
+[
+  {
+    "name": "VoilaVoila-CMS-1.0.0.zip",
+    "sha256": "bbd0b9725f354560b83c14fe1e56e2ad3cac282abed7b63be5d8d0a0ab760bba",
+    "files": 54,
+    "root": "voila-cms/",
+    "unchanged_from_supplied_archive": true
+  },
+  {
+    "name": "VoilaVoila-CMS-1.1.0.zip",
+    "sha256": "e56a1ddc98f24e1d33fd11713d0ff014a74fc7b7201a0af3ffaf3df1a3172029",
+    "files": 59,
+    "root": "voila-cms/",
+    "unchanged_from_supplied_archive": true
+  }
+]

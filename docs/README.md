@@ -1,0 +1,7 @@
+# Documentation / Documentation
+
+Start with the [English README](../README.md) or the [README français](../README.fr.md).
+
+The `en` and `fr` folders contain the public bilingual guides. Existing French reference files remain available: [architecture](ARCHITECTURE.md), [security](SECURITE.md), [historical validation](VALIDATION.md) and the [full supplied 1.1.0 README](fr/reference-originale-1.1.0.md). The original README was moved into this folder, so any literal paths in that reference are relative to the application root, not this folder.
+
+Les dossiers `en` et `fr` contiennent les guides bilingues. Les rapports `verification-*.json` sont les rapports historiques des versions fournies ; ils ne prouvent pas une exécution de la CI GitHub. Les nouveaux tests sont expliqués dans [tests](fr/tests.md).

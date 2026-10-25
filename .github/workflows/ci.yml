@@ -1,0 +1,47 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository:
+    name: Repository checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - run: python3 tools/check_repo.py
+      - run: node --check assets/admin.js
+      - run: node --check assets/site.js
+
+  php:
+    name: PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.4', '8.5']
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Build isolated test image
+        env:
+          PHP_VERSION: ${{ matrix.php }}
+        run: docker build --build-arg "PHP_VERSION=$PHP_VERSION" -f tests/Dockerfile -t vv-cms-tests .
+      - name: PHP syntax
+        run: docker run --rm vv-cms-tests sh -eu -c 'find . -name "*.php" -not -path "./storage/*" -print0 | xargs -0 -n1 php -l'
+      - name: HTTP and migration checks
+        run: docker run --rm vv-cms-tests

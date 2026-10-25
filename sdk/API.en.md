@@ -1,0 +1,113 @@
+# Develop a native module
+
+[Français](API.md)
+
+This is VoilaVoila CMS native API 1. It does not define WordPress functions. PHP modules are trusted code running with the host process privileges. Keep editorial data and settings in storage rather than theme files.
+
+## Manifest and package
+
+A module folder contains `cms.json`:
+
+```json
+{
+  "api": 1,
+  "id": "my-module",
+  "type": "plugin",
+  "name": "My module",
+  "version": "1.0.0",
+  "description": "Description française",
+  "description_en": "English description"
+}
+```
+
+The ID starts with a lowercase letter followed by lowercase letters, digits or hyphens; total length 2–51 characters. The folder name equals the ID. A plugin has `plugin.php`; a theme uses `"type": "theme"`, `index.php` and `style.css`.
+
+Every PHP module file must start with a direct-access guard:
+
+```php
+<?php
+declare(strict_types=1);
+defined('VV_ROOT') || exit;
+```
+
+ZIP the complete folder, or its contents with the manifest at the archive root. The installer accepts one root folder, at most 400 files, 12 MiB compressed, 20 MiB expanded and 8 MiB per entry. Symlinks, hidden paths and unsafe traversal are rejected. Allowed file extensions are PHP, JSON, CSS, JS, PNG, JPG, WebP, WOFF2, MD and TXT. ZIP installation leaves a module inactive and does not replace an existing folder. Update custom code by SFTP after backup and deactivation.
+
+## Actions, filters and shortcodes
+
+```php
+vv_action('head', function ($app, $current) {
+    echo '<meta name="my-module" content="active">';
+}, 10);
+
+vv_action('content_html', function ($html, $content) {
+    return $html;
+});
+
+vv_shortcode('hello', function () {
+    return '<p>' . e(t('Bonjour !', 'Hello!')) . '</p>';
+});
+```
+
+Shortcodes are simple tags such as `[hello]`, without attributes or user-provided code. Module HTML is the module author's responsibility. Escape text with `e()` and validate links with `VV\Content::link()`.
+
+| Hook | Arguments | Purpose |
+| --- | --- | --- |
+| `init` | `$app` | After active plugins load |
+| `public_route` | `$app` | Before the theme; a read-only route can emit XML and exit |
+| `head` | `$app`, `$current` | Public metadata |
+| `profile_links` | `$app` | Profile navigation links |
+| `profile_after` | `$app` | Content under the profile |
+| `sidebar` | `$app` | Context rail |
+| `footer` | `$app` | End of public body |
+| `admin_dashboard` | `$app` | Private dashboard widget |
+| `content_html` | `$html`, `$content` | Public body filter |
+
+`vv_action()` also registers filters. `vv_filter()` applies filters using the returned value; `vv_do()` executes actions. Lower priorities run first. Prefix any named functions/classes with a module-specific name to avoid collisions.
+
+## Admin page and private data
+
+```php
+$vv->adminPage('my-module', t('Mon module', 'My module'),
+    function ($app) {
+        $note = (string) vv_option('my-module', 'note', '');
+        echo '<form method="post">' . csrf_field();
+        echo '<input type="hidden" name="action" value="plugin.save">';
+        echo '<label>Note<textarea name="note">' . e($note) . '</textarea></label>';
+        echo '<button class="button primary">' . e(t('Enregistrer', 'Save')) . '</button></form>';
+    },
+    function ($app, $post) {
+        $note = VV\Content::text(val($post, 'note'), 500);
+        $app->store->change(function (&$state) use ($note) {
+            $state['plugin_data']['my-module']['note'] = $note;
+            VV\Store::log($state, 'my_module_saved');
+        });
+    }
+);
+```
+
+The central admin controller requires authentication, POST, origin and CSRF before calling the save callback. Exporting private data, deleting files or changing access also needs `VV\Security::reauth($app->store, $currentPassword)` and suitable local permission checks. Public callbacks do not inherit admin authorization.
+
+`$app->state` is a read snapshot. Always write with `$app->store->change(...)`, which rereads current state under a lock and a SQLite transaction. Write only under `plugin_data[your-id]`. Do not open another transaction or call nested state operations inside that callback: the lock is not reentrant. Call `$app->refresh()` afterward if the same request needs the updated snapshot. Deactivation retains plugin data.
+
+## Themes
+
+The engine provides `$app`, `$current` (or null), `$items`, `$query`, `$page`, `$per`, `$total`, `$notFound`, `$owner` and `$preview` to the theme template.
+
+Optional templates: `home.php`, `page.php`, `single.php`, `404.php`. A requested template falls back to theme `index.php`. Profil Or shares its structure with Profil Graphite. To make an independent theme, copy Profil Or and replace its manifest, templates and CSS.
+
+Useful functions (use the fully qualified `VV\Content` class or import it):
+
+```php
+e($text);                                // HTML escaping
+t('Texte français', 'English text');       // Interface language
+lang();                                  // fr or en
+url('index.php', ['p' => 'about']);        // Local URL, including subdirectory
+VV\Content::field($content, 'title');      // Translated field, with fallback
+VV\Content::url($content);                // Content URL
+$app->body($content);                     // Sanitized body + shortcodes + filters
+$app->publicItems('post', $search);        // Published posts whose time has arrived
+```
+
+Load CSS/JS as local files through `<link>` and deferred external `<script src="...">`. Native CSP rejects inline event handlers and third-party services. Preserve `head`, `footer` and other hooks that your design uses.
+
+`bonjour-plugin.zip` and `signature-theme.zip` are small installable examples, not engine dependencies. Native modules are executable code, not sandboxed user content.
