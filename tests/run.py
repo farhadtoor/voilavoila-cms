@@ -80,7 +80,11 @@ def server(php, work, storage):
     env = {**os.environ, 'VV_STORAGE_PATH': str(storage), 'VV_TEST_BASE': base}
     env.pop('VV_TRUSTED_PROXIES', None)
     with (work / ('php-' + storage.name + '.log')).open('w', encoding='utf-8') as log:
-        process = subprocess.Popen([php, '-S', f'127.0.0.1:{port}', '-t', str(work / 'app'),
+        # The CLI server ignores .user.ini. Match the documented CMS limits so
+        # multipart requests reach the application, including its 8 MiB checks.
+        process = subprocess.Popen([php, '-d', 'memory_limit=256M',
+                                    '-d', 'upload_max_filesize=64M', '-d', 'post_max_size=70M',
+                                    '-S', f'127.0.0.1:{port}', '-t', str(work / 'app'),
                                     str(work / 'app/router.php')], cwd=work, env=env, stdout=log, stderr=log)
         try:
             for _ in range(100):
@@ -94,6 +98,14 @@ def server(php, work, storage):
             else:
                 raise RuntimeError('Local PHP server did not become ready.')
             yield env
+        except BaseException:
+            # Temporary fixtures are deleted after the run. Keep failure evidence
+            # in CI output; these logs contain only this run's synthetic data.
+            for path in [work / ('php-' + storage.name + '.log'), storage / 'logs/error.txt']:
+                if path.is_file():
+                    tail = '\n'.join(path.read_text(encoding='utf-8', errors='replace').splitlines()[-30:])[-6000:]
+                    print(f'\n--- Synthetic test log: {path.name} ---\n{tail}', file=sys.stderr, flush=True)
+            raise
         finally:
             process.terminate()
             try:

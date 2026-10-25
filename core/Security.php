@@ -72,7 +72,7 @@ final class Security {
         $_SESSION['csrf'] ??= bin2hex(random_bytes(32));
     }
     public static function csrf(): string { return $_SESSION['csrf'] ?? ''; }
-    public static function post(): void {
+    public static function postOrigin(): void {
         if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') throw new Failure('Méthode non autorisée.', 405);
         if ((int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 70 * 1024 * 1024) throw new Failure('Envoi trop volumineux.', 413);
         if (($_SERVER['HTTP_SEC_FETCH_SITE'] ?? '') === 'cross-site') throw new Failure('Origine refusée.', 403);
@@ -82,8 +82,78 @@ final class Security {
             $host = strtolower($_SERVER['HTTP_HOST'] ?? '');
             if ($origin !== $host || ($o['scheme'] ?? '') !== (self::tls() ? 'https' : 'http')) throw new Failure('Origine refusée.', 403);
         }
+    }
+    public static function post(): void {
+        self::postOrigin();
         $token = val($_POST, 'csrf');
         if (!$token || !hash_equals(self::csrf(), $token)) throw new Failure('Session expirée. Rechargez la page.', 403);
+    }
+    /** Separate signed double-submit token; anonymous forms never open an owner session. */
+    public static function guestToken(Store $store,string $purpose): string {
+        if(!self::tls() && !self::local()) return '';
+        $name=(self::tls()?'__Secure-':'').'vvguest-'.substr(hash('sha256',\base_path().'|'.$purpose),0,12);
+        $token=is_string($_COOKIE[$name] ?? null)?$_COOKIE[$name]:'';
+        $secret=$store->read()['secret'];
+        if(!self::validGuestToken($token,$purpose,$secret)) {
+            $payload=time().'.'.bin2hex(random_bytes(24));
+            $token=$payload.'.'.hash_hmac('sha256',$purpose.'|'.$payload,$secret);
+            setcookie($name,$token,['expires'=>time()+7200,'path'=>\base_path() ?: '/','secure'=>self::tls(),'httponly'=>true,'samesite'=>'Strict']);
+            $_COOKIE[$name]=$token;
+        }
+        header('Cache-Control: private, no-store');
+        return $token;
+    }
+    private static function validGuestToken(string $token,string $purpose,string $secret): bool {
+        if(!preg_match('/^(\d{10})\.([a-f0-9]{48})\.([a-f0-9]{64})$/D',$token,$m)) return false;
+        return (int)$m[1]<=time() && (int)$m[1]>time()-7200 && hash_equals(hash_hmac('sha256',$purpose.'|'.$m[1].'.'.$m[2],$secret),$m[3]);
+    }
+    public static function guestPost(Store $store,string $purpose,string $token): void {
+        self::postOrigin();
+        if(!self::tls() && !self::local()) throw new Failure('HTTPS requis.',403);
+        $name=(self::tls()?'__Secure-':'').'vvguest-'.substr(hash('sha256',\base_path().'|'.$purpose),0,12);
+        $cookie=is_string($_COOKIE[$name] ?? null)?$_COOKIE[$name]:'';
+        if(!$cookie || !hash_equals($cookie,$token) || !self::validGuestToken($token,$purpose,$store->read()['secret'])) throw new Failure('Formulaire expiré. Rechargez la page.',403);
+    }
+    public static function documentName(string $name): string {
+        if($name==='' || strlen($name)>240 || !mb_check_encoding($name,'UTF-8') || preg_match('~[\x00-\x1f\x7f\\\\/<>:"|?*]~u',$name) || preg_match('/[\x{202a}-\x{202e}\x{2066}-\x{2069}]/u',$name)
+            || preg_match('/(?:^|\.)(?:php\d*|phtml|pht|phar|html?|shtml|svg|m?js|cgi|exe|dll|com|bat|cmd|ps1|sh|bash|asp|aspx|jsp|htaccess)(?:\.|$)/i',$name) || $name[0]==='.' || trim($name)!==$name) throw new Failure('Nom ou extension de fichier refusé.');
+        return $name;
+    }
+    /** Bounded in-memory inspection only; nothing is extracted or executed. */
+    public static function documentArchive(string $bytes): array {
+        if(!class_exists('ZipArchive')) throw new Failure('Activez PHP ZIP pour valider ce document.',503);
+        if(!str_starts_with($bytes,"PK\x03\x04")) throw new Failure('Signature ZIP invalide.');
+        $tmp=tempnam(sys_get_temp_dir(),'vv-document-');
+        if($tmp===false) throw new Failure('Validation du document indisponible.',503);
+        $zip=new \ZipArchive(); $opened=false;
+        try {
+            if(file_put_contents($tmp,$bytes)!==strlen($bytes)) throw new Failure('Validation du document impossible.',503);
+            if($zip->open($tmp,\ZipArchive::RDONLY | \ZipArchive::CHECKCONS)!==true) throw new Failure('Archive ZIP invalide.');
+            $opened=true;
+            if($zip->numFiles<1 || $zip->numFiles>200) throw new Failure('Archive limitée à 200 entrées.');
+            $total=0; $seen=[]; $rows=[];
+            for($i=0;$i<$zip->numFiles;$i++) {
+                $s=$zip->statIndex($i); $n=$s['name'] ?? ''; $key=mb_strtolower($n,'UTF-8');
+                if(!$n || strlen($n)>220 || !mb_check_encoding($n,'UTF-8') || preg_match('~[\x00-\x1f\x7f\\\\:]|^/|(?:^|/)\.{1,2}(?:/|$)|//~',$n) || isset($seen[$key])) throw new Failure('Chemin ou doublon de ZIP refusé.');
+                $seen[$key]=true; $ops=0; $attrs=0; $zip->getExternalAttributesIndex($i,$ops,$attrs); $kind=($attrs>>16)&0170000;
+                if(!in_array($kind,[0,0100000,0040000],true) || !empty($s['encryption_method']) || !in_array($s['comp_method'] ?? 0,[0,8],true)) throw new Failure('Entrée spéciale, chiffrée ou compression non autorisée.');
+                $size=(int)$s['size']; $total+=$size;
+                if($size<0 || $size>8*1024*1024 || $total>32*1024*1024 || ($size>1048576 && $size>200*max(1,(int)$s['comp_size']))) throw new Failure('Archive décompressée trop volumineuse.',413);
+                if(str_ends_with($n,'/')) { if($size!==0) throw new Failure('Dossier ZIP invalide.'); continue; }
+                $body=$zip->getFromIndex($i);
+                if(!is_string($body) || strlen($body)!==$size || hash('crc32b',$body)!==sprintf('%08x',$s['crc'])) throw new Failure('Intégrité ZIP incorrecte.');
+                $rows[$n]=$body;
+            }
+            return $rows;
+        } finally { if($opened) $zip->close(); @unlink($tmp); }
+    }
+    public static function xmlDocument(string $xml,int $max=1048576): \DOMDocument {
+        if(strlen($xml)>$max || preg_match('/<!\s*(?:DOCTYPE|ENTITY)/i',str_replace("\0",'',$xml))) throw new Failure('XML trop volumineux ou entités interdites.');
+        $doc=new \DOMDocument(); $old=libxml_use_internal_errors(true);
+        try { $ok=$doc->loadXML($xml,LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING); }
+        finally { libxml_clear_errors(); libxml_use_internal_errors($old); }
+        if(!$ok || $doc->doctype) throw new Failure('Document XML invalide.');
+        return $doc;
     }
     public static function password(string $password): void {
         if (strlen($password) < 14 || strlen($password) > 72 || str_contains($password, "\0"))

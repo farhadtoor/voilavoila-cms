@@ -6,8 +6,8 @@ BASE=os.environ['VV_TEST_BASE']
 PASS='Installation_test_46!'
 session=requests.Session()
 results=[]
-def check(name,condition):
-    if not condition: raise AssertionError(name)
+def check(name,condition,detail=None):
+    if not condition: raise AssertionError(name if detail is None else f'{name}: {detail}')
     results.append(name); print('PASS',name,flush=True)
 def token(r):
     m=re.search(r'name="csrf" value="([a-f0-9]+)"',r.text)
@@ -71,7 +71,14 @@ image=io.BytesIO(pathlib.Path('fixtures/image.png').read_bytes())
 r=post('media.upload',{'public':'on','alt':'Doré'},files={'file':('cover.png',image.getvalue(),'image/png')},view='media')
 check('original PNG image uploaded',r.status_code==200 and len(state()['media'])==1)
 mid=next(iter(state()['media'])); m=state()['media'][mid]
-check('public image served',requests.get(BASE+'/media.php?id='+mid).headers.get('Content-Type')=='image/png')
+public_image=requests.get(BASE+'/media.php?id='+mid)
+check('public image served',
+      public_image.status_code==200
+      and public_image.headers.get('Content-Type','').split(';',1)[0].strip().lower()=='image/png'
+      and public_image.content==image.getvalue(),
+      {'status':public_image.status_code,'content_type':public_image.headers.get('Content-Type'),
+       'bytes':len(public_image.content),'sha256':hashlib.sha256(public_image.content).hexdigest(),
+       'expected_sha256':hashlib.sha256(image.getvalue()).hexdigest()})
 r=post('media.update',{'id':mid,'alt':'Privé'},view='media')
 check('private image hidden anonymously',r.status_code==200 and requests.get(BASE+'/media.php?id='+mid).status_code==404 and session.get(BASE+'/media.php?id='+mid).status_code==200)
 r=post('media.upload',{'public':'on'},files={'file':('shell.php.png',b'<?php echo 1;','image/png')},view='media')

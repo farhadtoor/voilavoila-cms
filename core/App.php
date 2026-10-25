@@ -7,6 +7,12 @@ final class App {
     public array $state; public array $hooks=[]; public array $shortcodes=[]; public array $adminPages=[];
     public function __construct(public Store $store) { $this->refresh(); }
     public function refresh(): void { $this->state=$this->store->read(); }
+    public static function compatible(array $m): bool {
+        foreach(['requires_cms'=>VV_VERSION,'requires_php'=>PHP_VERSION] as $key=>$actual) {
+            if(isset($m[$key]) && (!is_string($m[$key]) || !preg_match('/^\d+\.\d+(?:\.\d+)?$/D',$m[$key]) || version_compare($actual,$m[$key],'<'))) return false;
+        }
+        return true;
+    }
     public function packages(string $type): array {
         $rows=[]; $folder=$type==='theme'?'themes':'plugins';
         foreach(glob(VV_ROOT.'/content/'.$folder.'/*/cms.json') as $file) {
@@ -22,6 +28,10 @@ final class App {
         $packages=$this->packages('plugin');
         foreach($this->state['plugins'] as $id) {
             if(!isset($packages[$id])) continue;
+            if(!self::compatible($packages[$id])) {
+                $this->store->change(function(&$s) use($id) { $s['plugins']=array_values(array_diff($s['plugins'],[$id])); Store::log($s,'plugin_incompatible',$id); });
+                continue;
+            }
             $hooks=$this->hooks; $short=$this->shortcodes; $pages=$this->adminPages;
             try { require VV_ROOT.'/content/plugins/'.$id.'/plugin.php'; }
             catch(\Throwable $err) {
@@ -49,7 +59,8 @@ final class App {
     }
     public function theme(): string {
         $id=$this->state['settings']['theme'] ?? 'profil-or';
-        return isset($this->packages('theme')[$id]) ? $id : 'profil-or';
+        $m=$this->packages('theme')[$id] ?? null;
+        return $m && self::compatible($m) ? $id : 'profil-or';
     }
     public function template(string $kind,array $context=[]): void {
         $folder=VV_ROOT.'/content/themes/'.$this->theme();

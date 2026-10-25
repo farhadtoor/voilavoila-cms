@@ -37,7 +37,7 @@ final class Store {
                         if(!preg_match('/^[a-f0-9]{24}$/D',(string)$id)) throw new Failure('Identifiant média hérité invalide.',503);
                         $original=$this->privateRead($dir.'/media/'.$id.'.php');
                         if(!hash_equals($m['sha256'],hash('sha256',$original))) throw new Failure('Média hérité incomplet. Migration interrompue.',503);
-                        $m=Media::metadata($m,$original); $this->writeMedia($m,$original);
+                        $m=Media::metadata($m,$original,true); $this->writeMedia($m,$original);
                     }
                     unset($m); $s['schema']=2;
                     $s['migration']=['from'=>'1.0','at'=>gmdate('c'),'legacy_sha256'=>hash('sha256',$bytes)];
@@ -132,7 +132,7 @@ final class Store {
         $bytes=file_get_contents($path); if(!is_string($bytes) || !str_starts_with($bytes,self::GUARD)) throw new Failure('Fichier privé invalide.',503); return substr($bytes,strlen(self::GUARD));
     }
     public function mediaPath(array $m): string {
-        $name=$m['stored_name'] ?? ''; if(!is_string($name) || !preg_match('/^[a-f0-9]{24}\.(jpg|jpeg|png|webp|pdf)$/D',$name) || !str_starts_with($name,($m['id'] ?? '').'.')) throw new Failure('Chemin média invalide.',503); return $this->dir.'/media/'.$name;
+        $name=$m['stored_name'] ?? ''; if(!is_string($name) || !preg_match('/^[a-f0-9]{24}\.(jpg|jpeg|png|webp|pdf|docx|zip|csv)$/D',$name) || !str_starts_with($name,($m['id'] ?? '').'.')) throw new Failure('Chemin média invalide.',503); return $this->dir.'/media/'.$name;
     }
     public function readMedia(array $m): string { $bytes=file_get_contents($this->mediaPath($m)); if(!is_string($bytes)) throw new Failure('Média illisible.',503); return $bytes; }
     public function writeMedia(array $m,string $bytes): void {

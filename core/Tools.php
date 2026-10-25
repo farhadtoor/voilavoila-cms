@@ -35,9 +35,9 @@ final class Tools {
             $s=$zip->statIndex($i); $n=$s['name'] ?? '';
             if(!$n || strlen($n)>220 || preg_match('/[\x00-\x1f\\\\:]/',$n) || str_starts_with($n,'/') || preg_match('~(?:^|/)\.\.?(/|$)~',$n) || str_contains($n,'//') || isset($names[strtolower($n)])) throw new Failure('Chemin de ZIP refusé.');
             $ops=0; $attrs=0; $zip->getExternalAttributesIndex($i,$ops,$attrs);
-            if((($attrs>>16)&0170000)===0120000 || !empty($s['encryption_method'])) throw new Failure('Lien symbolique ou entrée chiffrée refusée.');
+            if(!in_array((($attrs>>16)&0170000),[0,0100000,0040000],true) || !empty($s['encryption_method'])) throw new Failure('Entrée spéciale, lien symbolique ou entrée chiffrée refusée.');
             $total+=(int)$s['size'];
-            if((int)$s['size']>8*1024*1024 || $total>$maxBytes) throw new Failure('ZIP décompressé trop volumineux.',413);
+            if((int)$s['size']>8*1024*1024 || $total>$maxBytes || ((int)$s['size']>1048576 && (int)$s['size']>200*max(1,(int)$s['comp_size']))) throw new Failure('ZIP décompressé trop volumineux.',413);
             $names[strtolower($n)]=['name'=>$n,'index'=>$i,'size'=>$s['size']];
         }
         return $names;
@@ -53,6 +53,7 @@ final class Tools {
             $manifest=$candidates[0]; if($manifest['size']>12000) throw new Failure('Manifeste trop volumineux.');
             $m=json_decode($zip->getFromIndex($manifest['index']),true); $id=is_array($m)?($m['id'] ?? ''):'';
             if(!is_string($id) || !preg_match('/^[a-z][a-z0-9-]{1,50}$/D',$id) || ($m['api'] ?? 0)!==1 || ($m['type'] ?? '')!==$type || !is_string($m['name'] ?? null)) throw new Failure('Manifeste de module incompatible.');
+            if(!App::compatible($m)) throw new Failure('Ce module demande une autre version du CMS ou de PHP.');
             $folder=$type==='theme'?'themes':'plugins'; $target=VV_ROOT.'/content/'.$folder.'/'.$id;
             if(file_exists($target)) throw new Failure('Ce module existe déjà. Mettez à jour ses fichiers par SFTP après sauvegarde.',409);
             $prefix=$manifest['name']==='cms.json'?'':dirname($manifest['name']).'/';
@@ -129,11 +130,12 @@ final class Tools {
             foreach($data['media'] as $id=>$m) {
                 if(!is_string($id) || !preg_match('/^[a-f0-9]{24}$/D',$id) || !is_array($m)) throw new Failure('Média invalide.');
                 $stored=\val($m,'stored_name');
-                $entry=preg_match('/^'.preg_quote($id,'/').'\\.(jpg|jpeg|png|webp|pdf)$/D',$stored)?'media/'.$stored:'media/'.$id.'.bin';
+                $entry=preg_match('/^'.preg_quote($id,'/').'\\.(jpg|jpeg|png|webp|pdf|docx|zip|csv)$/D',$stored)?'media/'.$stored:'media/'.$id.'.bin';
                 if(!isset($entries[strtolower($entry)])) throw new Failure('Média manquant.');
                 $bytes=$zip->getFromName($entry);
                 if(!hash_equals(\val($m,'sha256'),hash('sha256',$bytes))) throw new Failure('Intégrité du média incorrecte.');
-                $media[$id]=Media::metadata(['id'=>$id,'name'=>Content::text(\val($m,'name'),160),'public'=>!empty($m['public']),'alt'=>Content::text(\val($m,'alt'),250),'created_at'=>Content::timestamp(\val($m,'created_at'))],$bytes);
+                $media[$id]=Media::metadata(['id'=>$id,'name'=>Content::text(\val($m,'name'),160),'public'=>!empty($m['public']),'alt'=>Content::text(\val($m,'alt'),250),'created_at'=>Content::timestamp(\val($m,'created_at'))],$bytes,($data['schema']===1));
+                foreach(['wp_key','wp_source','wp_id'] as $key) if(is_string($m[$key] ?? null) && strlen($m[$key])<=400) $media[$id][$key]=$m[$key];
                 $mediaEntries[$id]=$entry;
             }
             foreach($data['contents'] as $id=>$c) {
@@ -142,6 +144,8 @@ final class Tools {
                 if(isset($ids[$row['slug']])) throw new Failure('Slugs en double dans la sauvegarde.'); $ids[$row['slug']]=true;
                 foreach(['fr','en'] as $l) { $row['title_'.$l]=Content::text(\val($c,'title_'.$l)); $row['excerpt_'.$l]=Content::text(\val($c,'excerpt_'.$l),400); $row['body_'.$l]=Content::html(Content::relocateMedia(\val($c,'body_'.$l))); }
                 if(preg_match('/^[a-f0-9]{64}$/D',\val($c,'wp_key'))) $row['wp_key']=$c['wp_key'];
+                foreach(['wp_source','wp_id','wp_link'] as $key) if(is_string($c[$key] ?? null) && strlen($c[$key])<=1000) $row[$key]=$c[$key];
+                if(isset($c['comments_open'])) $row['comments_open']=$c['comments_open']===true;
                 foreach(array_slice(is_array($c['tags'] ?? null)?$c['tags']:[],0,12) as $tag) if(is_string($tag)) $row['tags'][]=Content::text($tag,40);
                 $cover=\val($c,'cover'); if(isset($media[$cover]) && $media[$cover]['public'] && str_starts_with($media[$cover]['mime'],'image/')) $row['cover']=$cover;
                 $contents[$id]=$row;
@@ -155,41 +159,15 @@ final class Tools {
                     if(isset($s['media'][$id]) && !hash_equals($s['media'][$id]['sha256'],$m['sha256'])) throw new Failure('Conflit de média. Restaurez dans une installation séparée.',409);
                     $app->store->writeMedia($m,$zip->getFromName($mediaEntries[$id]));
                 }
-                $s['contents']=$contents; $s['media']=$media; $s['settings']=$settings; $s['plugin_data']=$data['plugin_data'];
+                $s['contents']=$contents; $s['media']=$media; $s['settings']=$settings; $s['plugin_data']=$data['plugin_data']; unset($s['imports']);
                 Store::log($s,'backup_restored');
             });
         } catch(\JsonException $e) { throw new Failure('JSON de sauvegarde illisible.'); }
         finally { $zip->close(); }
     }
-    public static function wordpress(App $app,array $file,bool $publish=false): int {
-        $p=self::uploaded($file,8*1024*1024); $xml=file_get_contents($p);
-        if(preg_match('/<!DOCTYPE|<!ENTITY/i',$xml)) throw new Failure('Déclarations XML externes refusées.');
-        $d=new \DOMDocument(); $old=libxml_use_internal_errors(true);
-        try { $ok=$d->loadXML($xml,LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING); }
-        finally { libxml_clear_errors(); libxml_use_internal_errors($old); }
-        if(!$ok) throw new Failure('Export WordPress XML illisible.');
-        $xp=new \DOMXPath($d); $wp='http://wordpress.org/export/1.2/'; $xp->registerNamespace('wp',$wp); $xp->registerNamespace('content','http://purl.org/rss/1.0/modules/content/');
-        if(!$xp->query('/rss/channel/wp:wxr_version')->length) throw new Failure('Choisissez un export WordPress WXR 1.2.');
-        $items=$xp->query('/rss/channel/item'); if($items->length>2000) throw new Failure('Import limité à 2 000 éléments.');
-        $rows=[];
-        foreach($items as $item) {
-            $get=fn($q)=>(string)$xp->evaluate('string('.$q.')',$item);
-            $type=$get('wp:post_type'); if(!in_array($type,['post','page'],true)) continue;
-            $source=$get('wp:post_id'); $key=hash('sha256',$get('guid').'|'.$source.'|'.$get('title'));
-            $status=$get('wp:status'); $date=strtotime($get('wp:post_date_gmt').' UTC') ?: time();
-            $rows[]=['id'=>bin2hex(random_bytes(12)),'wp_key'=>$key,'type'=>$type,'status'=>$publish && $status==='publish'?'published':'draft','slug'=>Content::slug($get('wp:post_name') ?: $get('title')),'title_fr'=>Content::text($get('title')),'title_en'=>'','excerpt_fr'=>'','excerpt_en'=>'','body_fr'=>Content::html($get('content:encoded')),'body_en'=>'','publish_at'=>$date,'created_at'=>gmdate('c'),'updated_at'=>gmdate('c'),'cover'=>'','tags'=>[],'menu'=>false,'pinned'=>false,'order'=>10,'version'=>1,'revisions'=>[]];
-        }
-        if(!$rows) throw new Failure('Cet export ne contient aucune page ou article importable.');
-        self::snapshot($app);
-        return $app->store->change(function(&$s) use($rows) {
-            $slugs=[]; $keys=[]; foreach($s['contents'] as $c) { $slugs[$c['slug']]=true; if(isset($c['wp_key'])) $keys[$c['wp_key']]=true; }
-            $count=0;
-            foreach($rows as $c) {
-                if(isset($keys[$c['wp_key']])) continue;
-                $base=$c['slug']; $n=2; while(isset($slugs[$c['slug']])) $c['slug']=$base.'-'.$n++;
-                $slugs[$c['slug']]=true; $keys[$c['wp_key']]=true; $s['contents'][$c['id']]=$c; $count++;
-            }
-            Store::log($s,'wordpress_imported',(string)$count); return $count;
-        });
+    public static function wordpress(App $app,array $file,bool $publish,array $uploads=[],array $options=[]): int {
+        require_once __DIR__.'/WordPress.php';
+        $report=WordPress::run($app,$file,$publish,$uploads,$options);
+        return $report['imported'];
     }
 }

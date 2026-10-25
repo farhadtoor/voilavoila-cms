@@ -87,7 +87,7 @@ final class Content {
         $c['publish_at']=$date!=='' ? (strtotime($date.' UTC') ?: 0) : time();
         if($c['publish_at']<1) throw new Failure('Date de publication invalide.');
         $version=(int)\val($data,'version','0');
-        $store->change(function(&$s) use (&$c,$id,$version) {
+        $store->change(function(&$s) use (&$c,$id,$version,$data) {
             $old=$s['contents'][$id] ?? null;
             if(($old['version'] ?? 0)!==$version) throw new Failure('Ce contenu a changé dans un autre onglet. Copiez votre texte puis rechargez.',409);
             foreach($s['contents'] as $other) if($other['id']!==$id && $other['slug']===$c['slug']) throw new Failure('Ce lien est déjà utilisé. Modifiez le slug.',409);
@@ -95,6 +95,8 @@ final class Content {
             $revisions=$old['revisions'] ?? [];
             if($old) { unset($old['revisions']); $revisions[]=$old; }
             $c['revisions']=array_slice($revisions,-15); $c['version']=$version+1;
+            foreach(['wp_key','wp_source','wp_id','wp_link','comments_open'] as $key) if(isset($old[$key])) $c[$key]=$old[$key];
+            if(isset($data['comments_config'])) $c['comments_open']=isset($data['comments_open']);
             $c['created_at']=$old['created_at'] ?? gmdate('c'); $c['updated_at']=gmdate('c');
             $s['contents'][$id]=$c; Store::log($s,'content_saved',$c['title_fr'] ?: $c['title_en']);
         });
