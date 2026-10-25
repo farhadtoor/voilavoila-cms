@@ -1,0 +1,25 @@
+{
+  "checks": 18,
+  "passed": [
+    "owner signs in with browser",
+    "browser upload accepts validated DOCX with DOCX label",
+    "document picker inserts escaped link in French",
+    "English insertion leaves French text unchanged",
+    "browser editor saves attachment links",
+    "document link downloads under its original display filename",
+    "guest browser submission waits for moderation",
+    "owner browser moderation publishes comment",
+    "public comment form works without JavaScript",
+    "closing comments preserves approved messages",
+    "mobile layout media",
+    "mobile layout editor",
+    "mobile layout plugin-comments",
+    "mobile layout tools",
+    "mobile layout plugins",
+    "public mobile English comments and attachment",
+    "moderation UI switches to English",
+    "no JavaScript runtime errors"
+  ],
+  "errors": [],
+  "browser": "156.0.8078.47"
+}

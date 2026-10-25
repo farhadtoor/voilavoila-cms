@@ -1,0 +1,11 @@
+{
+  "api": 1,
+  "id": "comments",
+  "type": "plugin",
+  "name": "Commentaires / Comments",
+  "version": "1.0.0",
+  "requires_cms": "1.2.0",
+  "description": "Commentaires visiteurs modérés, sans compte public. Moderated guest comments without public accounts.",
+  "author": "VoilaVoila CMS contributors",
+  "license": "MIT"
+}

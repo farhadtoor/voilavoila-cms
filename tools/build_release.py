@@ -2,6 +2,8 @@
 """Build a clean installable ZIP from the current committed source (no upload)."""
 import argparse
 import hashlib
+import datetime
+import stat
 from pathlib import Path
 import re
 import subprocess
@@ -18,6 +20,7 @@ def git(*args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--version', required=True)
+    parser.add_argument('--allow-template', action='store_true', help='Explicitly build unconfigured distribution template')
     args = parser.parse_args()
     if not re.fullmatch(r'\d+\.\d+\.\d+', args.version):
         parser.error('Use a numeric major.minor.patch version')
@@ -26,7 +29,7 @@ def main():
         parser.error('Requested version differs from VV_VERSION: ' + actual)
     if git('status', '--porcelain').strip():
         parser.error('Commit or remove pending source changes before packaging')
-    subprocess.run([sys.executable, str(ROOT / 'tools/check_repo.py')], check=True)
+    subprocess.run([sys.executable, str(ROOT / 'tools/check_repo.py')] + (['--allow-template'] if args.allow_template else []), check=True)
     archive = ROOT / 'dist' / ('VoilaVoila-CMS-' + args.version + '.zip')
     if archive.exists():
         parser.error('Output already exists. Keep published archives immutable; choose a new output/version.')
@@ -45,9 +48,15 @@ def main():
     files['MANIFEST-SHA256.txt'] = ''.join(hashlib.sha256(body).hexdigest() + '  ' + name + '\n'
                                          for name, body in sorted(files.items())).encode()
     archive.parent.mkdir(exist_ok=True)
+    epoch = int(git('show', '-s', '--format=%ct', 'HEAD').strip())
+    stamp = datetime.datetime.fromtimestamp(max(epoch, 315532800), datetime.timezone.utc)
     with zipfile.ZipFile(archive, 'x', compression=zipfile.ZIP_DEFLATED) as output:
         for name, body in sorted(files.items()):
-            output.writestr('voila-cms/' + name, body)
+            info = zipfile.ZipInfo('voila-cms/' + name, stamp.timetuple()[:6])
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.create_system = 3
+            info.external_attr = (stat.S_IFREG | (0o755 if name == 'Lancer-Mac.command' else 0o644)) << 16
+            output.writestr(info, body)
     checksum = archive.with_suffix('.sha256')
     checksum.write_text(hashlib.sha256(archive.read_bytes()).hexdigest() + '  ' + archive.name + '\n')
     print('Created locally:', archive, '\nChecksum:', checksum)

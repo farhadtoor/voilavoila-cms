@@ -1,0 +1,8 @@
+{
+  "name": "voilavoila-cms-browser-checks",
+  "private": true,
+  "description": "Optional browser tests, not a CMS runtime dependency",
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}

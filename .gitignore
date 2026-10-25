@@ -27,3 +27,6 @@ Thumbs.db
 *.swo
 .idea/
 .vscode/
+
+# Optional browser dependencies
+/tests/node_modules/

@@ -2,7 +2,18 @@
 
 Versions below identify the supplied application archives. Git history is reconstructed from those snapshots at import time; it does not recreate the original development timeline. / Les versions correspondent aux archives fournies. L’historique Git est reconstruit lors de l’import et ne reconstitue pas les étapes de développement d’origine.
 
-## Unreleased / Non publié — GitHub preparation
+## 1.2.0 — 2026-10-25
+
+- PDF/DOCX/ZIP/CSV: shared upload/import/restore validation, original bytes/extensions, forced download and editor insertion.
+- Optional moderated guest comments: separate signed token, owner moderation, limits, JSON export and authenticated purge.
+- Offline WXR 1.0–1.2 + uploads ZIP: media/link mapping, excerpts/dates/tags, pending comments, stable deduplication and report.
+- Unchanged WordPress Porter 1.0.0 bundled inactive.
+- Minimum CMS/PHP manifest checks; API 1 and existing SQLite schema retained.
+- Bilingual documentation, upgrade patch, GitHub procedure and isolated checks.
+
+Documents, commentaires modérés et migration WordPress hors ligne ; accès et données 1.1 conservés. [Notes FR/EN](docs/releases/v1.2.0.md).
+
+## Historical GitHub preparation / Préparation GitHub historique
 
 - English/French README, installation, architecture, security, upgrade, publishing and community guides.
 - Contribution/support/conduct policies, release notes, issue/PR templates, ignore rules and review ownership.

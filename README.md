@@ -2,18 +2,20 @@
 
 **A small, self-hosted PHP + SQLite CMS for one owner.** Publish a personal profile, pages and posts; manage media; extend it with native themes and plugins.
 
-[Français](README.fr.md) · [Install](docs/en/installation.md) · [Upgrade from 1.0](docs/en/upgrade.md) · [Contribute](CONTRIBUTING.md) · [Releases](https://github.com/farhadtoor/voilavoila-cms/releases)
+[Français](README.fr.md) · [Install](docs/en/installation.md) · [Upgrade](docs/en/upgrade-1.2.md) · [Contribute](CONTRIBUTING.md) · [Releases](https://github.com/GITHUB_OWNER/GITHUB_REPOSITORY/releases)
 
-The current application version is **1.1.0**. The `main` branch also includes the bilingual project documentation and development checks. The original 1.0.0 and 1.1.0 archives are preserved as separate releases; they are not merged into one installation.
+The current application version is **1.2.0**. The `main` branch also includes the bilingual project documentation and development checks. The original 1.0.0 and 1.1.0 archives are preserved as separate releases; they are not merged into one installation.
 
 ## What you can do
 
 - Publish a public profile, French/English pages and posts, drafts, private previews and scheduled posts.
 - Keep up to 15 content revisions and reject stale editor saves.
-- Upload JPG/JPEG, PNG, WebP and PDF files; version 1.1 preserves the original bytes and extension.
+- Upload original JPG/JPEG/PNG/WebP and downloadable PDF/DOCX/ZIP/CSV documents; insert document links in the editor.
 - Choose between two native themes; install native API 1 theme/plugin ZIPs.
 - Use a private workspace, SEO metadata/sitemap/RSS and an optional external PASS link.
-- Export/restore editorial backups and import WordPress WXR 1.2 pages/posts.
+- Export/restore backups; migrate WXR 1.0–1.2 with a local uploads ZIP, media/link mapping and a report.
+- Optional moderated guest comments without public accounts; JSON export and authenticated purge.
+- Bundled inactive WordPress Porter for supported static conversions and manual-porting reports.
 - Manage one owner with a server-side installation key, hashed password and offline recovery code.
 
 Pages/posts and revisions live in SQLite. PHP application access and error logs are separate text files. The UI and assets are served locally; the CMS needs no Composer, npm build or external database server.
@@ -36,7 +38,7 @@ Keep the terminal open, visit [the local installer](http://127.0.0.1:8787/instal
 
 ## Scope
 
-This is a single-owner personal CMS for moderate traffic. It has no public registration, multi-user roles, ticket sales or payment engine. The PASS plugin opens an existing HTTPS ticketing site. WordPress inspired some concepts; WordPress themes/plugins and `wp_*` functions are not compatible. WXR import does not fetch attachments or migrate plugin business data.
+This is a single-owner personal CMS for moderate traffic. It has no public registration, multi-user roles, ticket sales or payment engine. The PASS plugin opens an existing HTTPS ticketing site. WordPress inspired some concepts; WordPress themes/plugins and `wp_*` functions are not compatible. WXR uses a local media ZIP, never remote attachment downloads. Plugin business data are not migrated. WordPress Porter is a limited static converter.
 
 Native PHP extensions run with the hosting process privileges. Only install code you trust. See [security design](docs/en/security.md) and the [reporting policy](SECURITY.md).
 
@@ -45,18 +47,23 @@ Native PHP extensions run with the hosting process privileges. Only install code
 | Topic | English | Français |
 | --- | --- | --- |
 | Installation and recovery | [Guide](docs/en/installation.md) | [Guide](docs/fr/installation.md) |
-| 1.0 → 1.1 migration | [Guide](docs/en/upgrade.md) | [Guide](docs/fr/mise-a-jour.md) |
+| Upgrade 1.1 → 1.2 | [Guide](docs/en/upgrade-1.2.md) | [Guide](docs/fr/mise-a-jour-1.2.md) |
+| Documents | [Guide](docs/en/documents.md) | [Guide](docs/fr/documents.md) |
+| Comments | [Guide](docs/en/comments.md) | [Guide](docs/fr/commentaires.md) |
+| WordPress | [Guide](docs/en/wordpress.md) | [Guide](docs/fr/wordpress.md) |
 | Architecture and versions | [Guide](docs/en/architecture.md) | [Guide](docs/fr/architecture.md) |
 | Security and privacy | [Guide](docs/en/security.md) | [Guide](docs/fr/securite.md) |
 | Native theme/plugin API | [SDK](sdk/API.en.md) | [SDK](sdk/API.md) |
 | Testing and limitations | [Guide](docs/en/testing.md) | [Guide](docs/fr/tests.md) |
-| GitHub publication | [Steps](docs/en/publishing.md) | [Étapes](docs/fr/publication.md) |
+| GitHub publication | [Steps](GITHUB-v1.2.0-FR-EN.md) | [Étapes](GITHUB-v1.2.0-FR-EN.md) |
 | Community and maintenance | [Guide](docs/en/community.md) | [Guide](docs/fr/communaute.md) |
 
 For development checks, run `python3 tools/check_repo.py` and `python3 tests/run.py`. The tests use temporary application copies and synthetic data. See the testing guide before running them. CI is supplied for PHP 8.3/8.4/8.5; its first GitHub run remains to be completed. Historical release reports and current reproducible checks are distinguished in the guide.
 
 ## Contribute and get help
 
-Questions and project showcases: [Discussions](https://github.com/farhadtoor/voilavoila-cms/discussions). Reproducible bugs and scoped proposals: [Issues](https://github.com/farhadtoor/voilavoila-cms/issues). English and French are welcome. Read [CONTRIBUTING](CONTRIBUTING.md), [SUPPORT](SUPPORT.md), the [Code of Conduct](CODE_OF_CONDUCT.md) and [ROADMAP](ROADMAP.md).
+Questions and project showcases: [Discussions](https://github.com/GITHUB_OWNER/GITHUB_REPOSITORY/discussions). Reproducible bugs and scoped proposals: [Issues](https://github.com/GITHUB_OWNER/GITHUB_REPOSITORY/issues). English and French are welcome. Read [CONTRIBUTING](CONTRIBUTING.md), [SUPPORT](SUPPORT.md), the [Code of Conduct](CODE_OF_CONDUCT.md) and [ROADMAP](ROADMAP.md).
 
 The code is MIT-licensed. The supplied PASS logo is excluded from that license; see [LICENSE](LICENSE) and [NOTICE](NOTICE). No WordPress or PASS ticketing engine is bundled.
+
+Configure distribution placeholders with `python3 tools/configure_project.py --help` before publishing.

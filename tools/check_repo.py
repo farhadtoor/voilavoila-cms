@@ -42,7 +42,7 @@ def main():
     if errors:
         print('\n'.join('FAIL ' + error for error in errors), file=sys.stderr)
         return 1
-    print(f'PASS {count} repository files: no runtime data, configured links, valid local Markdown targets')
+    print(f'PASS {count} repository files: no runtime data, valid local Markdown targets' + (' (distribution template allowed)' if args.allow_template else ', project placeholders configured'))
     return 0
 
 
