@@ -1,0 +1,15 @@
+{
+  "checks": 8,
+  "passed": [
+    "original 1.1.0 archive installs",
+    "upgrade preserves owner credentials secret and recovery hash",
+    "upgrade preserves exact posts pages and revisions",
+    "upgrade preserves existing plugin data settings and activation choices",
+    "upgrade does not generate a new setup key",
+    "existing owner can sign in on 1.2",
+    "new optional plugins are available and remain inactive",
+    "upgrade keeps SQLite schema and integrity"
+  ],
+  "source_sha256": "e56a1ddc98f24e1d33fd11713d0ff014a74fc7b7201a0af3ffaf3df1a3172029",
+  "runtime": "8.3.6"
+}

@@ -1,6 +1,6 @@
 # Maintainers and credits / Maintenance et crédits
 
-Repository maintainer / Mainteneur du dépôt: [@farhadtoor](https://github.com/farhadtoor).
+Repository maintainer / Mainteneur du dépôt: [@GITHUB_OWNER](https://github.com/GITHUB_OWNER).
 
 The 1.0.0 and 1.1.0 supplied application archives form the initial source snapshots. This repository's import history records those snapshots and the later bilingual documentation preparation; it does not claim to reproduce all original development commits.
 

@@ -1,0 +1,9 @@
+{
+  "checks": 4,
+  "passed": [
+    "desktop owner porter screen",
+    "390 px mobile without horizontal overflow",
+    "English UI",
+    "no JavaScript runtime errors"
+  ]
+}

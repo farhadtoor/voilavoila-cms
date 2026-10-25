@@ -1,4 +1,4 @@
 # Set by prepare-repository.py for the account that publishes the repository.
-/.github/ @farhadtoor
-/core/ @farhadtoor
-/bin/ @farhadtoor
+/.github/ @GITHUB_MAINTAINER
+/core/ @GITHUB_MAINTAINER
+/bin/ @GITHUB_MAINTAINER

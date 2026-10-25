@@ -131,8 +131,10 @@ def main():
                            env={**env, **server_env}, check=True)
         subprocess.run([sys.executable, str(SOURCE / 'tests/migration_failure.py')], cwd=work,
                        env=env, check=True)
+        subprocess.run([sys.executable, str(SOURCE / 'tests/release_120.py'), '--php', php,
+                        '--report', str(work / 'release-120-results.json')], env=env, check=True)
         reports = [json.loads((work / name).read_text(encoding='utf-8')) for name in
-                   ['integration-results.json', 'features-results.json', 'migration-failure-results.json']]
+                   ['integration-results.json', 'features-results.json', 'migration-failure-results.json', 'release-120-results.json']]
         summary = {'runtime': 'PHP ' + version, 'checks': sum(r['checks'] for r in reports),
                    'suites': reports, 'storage': 'Temporary synthetic data; removed after run'}
         if args.report:

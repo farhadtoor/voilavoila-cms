@@ -77,9 +77,11 @@ if(($_SERVER['REQUEST_METHOD'] ?? '')==='POST') {
                 }); break;
             case 'theme.activate':
                 $id=val($_POST,'id'); if(!isset($vv->packages('theme')[$id])) throw new Failure('Thème introuvable.');
+                if(!\VV\App::compatible($vv->packages('theme')[$id])) throw new Failure('Version du thème incompatible avec ce CMS ou PHP.');
                 $vv->store->change(function(&$s) use($id){$s['settings']['theme']=$id; Store::log($s,'theme_activated',$id);}); break;
             case 'plugin.toggle':
                 $id=val($_POST,'id'); if(!isset($vv->packages('plugin')[$id])) throw new Failure('Extension introuvable.');
+                if(!in_array($id,$vv->state['plugins'],true) && !\VV\App::compatible($vv->packages('plugin')[$id])) throw new Failure('Version de l’extension incompatible avec ce CMS ou PHP.');
                 $vv->store->change(function(&$s) use($id) {
                     if(in_array($id,$s['plugins'],true)) $s['plugins']=array_values(array_diff($s['plugins'],[$id])); else $s['plugins'][]=$id;
                     Store::log($s,'plugin_toggled',$id);
@@ -125,7 +127,11 @@ if(($_SERVER['REQUEST_METHOD'] ?? '')==='POST') {
                 Tools::restore($vv,$_FILES['backup'] ?? []); $message=t('Sauvegarde restaurée. Le compte propriétaire est conservé.','Backup restored. The owner account was preserved.'); break;
             case 'wordpress.import':
                 Security::reauth($vv->store,val($_POST,'current_password'));
-                $count=Tools::wordpress($vv,$_FILES['wxr'] ?? [],isset($_POST['publish'])); $message=$count.' '.t('contenus importés.','items imported.'); break;
+                $count=Tools::wordpress($vv,$_FILES['wxr'] ?? [],isset($_POST['publish']),$_FILES['uploads'] ?? [],['source_url'=>val($_POST,'source_url'),'comments'=>isset($_POST['import_comments']),'public_media'=>isset($_POST['public_media'])]); $message=$count.' '.t('contenus importés.','items imported.'); break;
+            case 'wordpress.report':
+                $report=$vv->state['imports']['wordpress'] ?? null; if(!$report) throw new Failure('Aucun rapport WordPress.',404);
+                header('Content-Type: application/json; charset=utf-8'); header('Content-Disposition: attachment; filename="wordpress-import-report.json"');
+                echo json_encode($report,JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR); exit;
             case 'editor.preview':
                 header('Content-Type: application/json; charset=utf-8'); echo json_encode(['html'=>Content::html(val($_POST,'html'))],JSON_THROW_ON_ERROR); exit;
             case 'plugin.save':

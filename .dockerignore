@@ -4,3 +4,8 @@ storage/*
 *.zip
 .git
 .DS_Store
+**/node_modules
+**/__pycache__
+test-results
+dist
+build

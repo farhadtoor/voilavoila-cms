@@ -111,3 +111,15 @@ $app->publicItems('post', $recherche);   // Contenus publiés arrivés à éché
 Chargez les CSS/JS par fichiers locaux, avec `<link>` et `<script src="..." defer>`. La CSP native refuse les gestionnaires inline et les services tiers. Conservez les hooks `head`, `footer` et ceux dont votre présentation a besoin.
 
 Les archives `bonjour-plugin.zip` et `signature-theme.zip` du SDK sont des exemples installables, pas des dépendances du moteur.
+
+## Ajouts du CMS 1.2
+
+Le manifeste peut fournir `requires_cms` et `requires_php`, versions minimales numériques (ex. `"1.2.0"` et `"8.3"`). L’installation et l’activation vérifient ces valeurs. Un plugin devenu incompatible est désactivé au chargement ; le thème retombe sur Profil Or. Il n’existe pas encore de graphe de dépendances ou de serveur de mises à jour signé.
+
+`vv_action($nom, $callback, $priorite)` **enregistre** les callbacks, y compris les filtres. `vv_filter($nom, $valeur, ...$arguments)` **applique** un filtre ; ce n’est pas une fonction d’enregistrement.
+
+Le filtre `wordpress_import_state_v1` reçoit `($state, $event)` et retourne le nouvel état. L’événement contient `import_comments`, des commentaires normalisés et `post_map`. Il s’exécute **dans la transaction d’import existante** : aucun appel imbriqué à `Store::change`, aucune requête réseau, aucun affichage. Une exception annule l’import. Le plugin Commentaires est le premier consommateur ; les autres plugins ne doivent pas modifier ses données.
+
+Les pièces jointes utilisent `Media::metadata` et `Media::upload`, puis `media.php` pour la délivrance. Les validations internes de noms/ZIP/XML ne constituent pas une API de détection antivirus. Le mode hérité de `metadata` est réservé aux données 1.0 ; ne l’utilisez pas pour contourner le contrôle extension/MIME.
+
+Le formulaire visiteur de Commentaires utilise `Security::guestToken` / `guestPost`, distincts de la session propriétaire. `postOrigin` seul n’est **pas** une autorisation ni une vérification CSRF. Toute action administrative doit conserver `Security::post` et le contrôle propriétaire.

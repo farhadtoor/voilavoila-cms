@@ -111,3 +111,15 @@ $app->publicItems('post', $search);        // Published posts whose time has arr
 Load CSS/JS as local files through `<link>` and deferred external `<script src="...">`. Native CSP rejects inline event handlers and third-party services. Preserve `head`, `footer` and other hooks that your design uses.
 
 `bonjour-plugin.zip` and `signature-theme.zip` are small installable examples, not engine dependencies. Native modules are executable code, not sandboxed user content.
+
+## CMS 1.2 additions
+
+Manifests may specify numeric minimum `requires_cms` and `requires_php` versions, for example `"1.2.0"` and `"8.3"`. Installation/activation check them. Incompatible plugins are disabled on loading; incompatible themes fall back to Profil Or. There is no dependency graph or signed update server yet.
+
+`vv_action($name, $callback, $priority)` **registers** callbacks, including filters. `vv_filter($name, $value, ...$args)` **applies** a filter; it does not register one.
+
+`wordpress_import_state_v1` receives `($state, $event)` and returns state. The event includes `import_comments`, normalized comments and `post_map`. It runs **inside the existing import transaction**: no nested `Store::change`, network requests or output. Exceptions abort import. Comments is its first consumer; other plugins must not edit that plugin's data.
+
+Attachments use `Media::metadata` / `Media::upload` and `media.php` delivery. Internal filename/ZIP/XML validation is not an antivirus API. Legacy metadata mode is reserved for 1.0 data, not a MIME-check bypass.
+
+The guest comment form uses `Security::guestToken` / `guestPost` separately from owner sessions. `postOrigin` alone is **neither** authorization nor CSRF verification. Admin actions must retain `Security::post` and owner checks.
