@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Questions / Questions
-    url: https://github.com/GITHUB_OWNER/GITHUB_REPOSITORY/discussions
+    url: https://github.com/farhadtoor/voilavoila-cms/discussions
     about: Ask for help in English or French / Demandez de l’aide en français ou en anglais.
   - name: Private security report / Signalement de sécurité privé
-    url: https://github.com/GITHUB_OWNER/GITHUB_REPOSITORY/security/advisories/new
+    url: https://github.com/farhadtoor/voilavoila-cms/security/advisories/new
     about: Please read SECURITY.md. Never publish a vulnerability in an issue / Lisez SECURITY.md.

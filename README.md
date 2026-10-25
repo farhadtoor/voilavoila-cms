@@ -2,7 +2,7 @@
 
 **A small, self-hosted PHP + SQLite CMS for one owner.** Publish a personal profile, pages and posts; manage media; extend it with native themes and plugins.
 
-[Français](README.fr.md) · [Install](docs/en/installation.md) · [Upgrade](docs/en/upgrade-1.2.md) · [Contribute](CONTRIBUTING.md) · [Releases](https://github.com/GITHUB_OWNER/GITHUB_REPOSITORY/releases)
+[Français](README.fr.md) · [Install](docs/en/installation.md) · [Upgrade](docs/en/upgrade-1.2.md) · [Contribute](CONTRIBUTING.md) · [Releases](https://github.com/farhadtoor/voilavoila-cms/releases)
 
 The current application version is **1.2.0**. The `main` branch also includes the bilingual project documentation and development checks. The original 1.0.0 and 1.1.0 archives are preserved as separate releases; they are not merged into one installation.
 
@@ -62,7 +62,7 @@ For development checks, run `python3 tools/check_repo.py` and `python3 tests/run
 
 ## Contribute and get help
 
-Questions and project showcases: [Discussions](https://github.com/GITHUB_OWNER/GITHUB_REPOSITORY/discussions). Reproducible bugs and scoped proposals: [Issues](https://github.com/GITHUB_OWNER/GITHUB_REPOSITORY/issues). English and French are welcome. Read [CONTRIBUTING](CONTRIBUTING.md), [SUPPORT](SUPPORT.md), the [Code of Conduct](CODE_OF_CONDUCT.md) and [ROADMAP](ROADMAP.md).
+Questions and project showcases: [Discussions](https://github.com/farhadtoor/voilavoila-cms/discussions). Reproducible bugs and scoped proposals: [Issues](https://github.com/farhadtoor/voilavoila-cms/issues). English and French are welcome. Read [CONTRIBUTING](CONTRIBUTING.md), [SUPPORT](SUPPORT.md), the [Code of Conduct](CODE_OF_CONDUCT.md) and [ROADMAP](ROADMAP.md).
 
 The code is MIT-licensed. The supplied PASS logo is excluded from that license; see [LICENSE](LICENSE) and [NOTICE](NOTICE). No WordPress or PASS ticketing engine is bundled.
 

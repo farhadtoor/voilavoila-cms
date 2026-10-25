@@ -51,7 +51,7 @@ python3 tools/configure_project.py \
 python3 tools/check_repo.py
 ```
 
-Remplacez cet e-mail d’exemple par votre contact privé réel. Activez aussi les signalements privés GitHub. Une URL HTTPS de contact privée fonctionnelle est également acceptée. Le script personnalise les modèles `GITHUB_OWNER`, `GITHUB_REPOSITORY`, `GITHUB_MAINTAINER` et `MAINTAINER_CONTACT` dans les docs/politiques ; il ne touche pas aux données du site et ne contacte pas GitHub.
+Remplacez cet e-mail d’exemple par votre contact privé réel. Activez aussi les signalements privés GitHub. Une URL HTTPS de contact privée fonctionnelle est également acceptée. Le script personnalise les modèles `farhadtoor`, `voilavoila-cms`, `farhadtoor` et `email@farhad.fr` dans les docs/politiques ; il ne touche pas aux données du site et ne contacte pas GitHub.
 
 Les scripts, README, CONTRIBUTING, SECURITY, SUPPORT, CODE_OF_CONDUCT, modèles d’issues/PR, CODEOWNERS, Dependabot et workflow CI sont inclus. Vérifiez les informations publiques avant commit.
 

@@ -2,7 +2,7 @@
 
 **Un petit CMS personnel auto-hébergé en PHP + SQLite, pour un propriétaire unique.** Publiez un profil, des pages et des articles ; gérez les médias ; ajoutez des thèmes et des extensions natifs.
 
-[English](README.md) · [Installer](docs/fr/installation.md) · [Mettre à jour](docs/fr/mise-a-jour-1.2.md) · [Contribuer](CONTRIBUTING.fr.md) · [Versions](https://github.com/GITHUB_OWNER/GITHUB_REPOSITORY/releases)
+[English](README.md) · [Installer](docs/fr/installation.md) · [Mettre à jour](docs/fr/mise-a-jour-1.2.md) · [Contribuer](CONTRIBUTING.fr.md) · [Versions](https://github.com/farhadtoor/voilavoila-cms/releases)
 
 La version actuelle du moteur est la **1.2.0**. La branche `main` contient aussi la documentation bilingue et les vérifications de développement. Les archives originales 1.0.0 et 1.1.0 sont conservées comme deux versions distinctes ; elles ne se superposent pas dans une même installation.
 
@@ -48,7 +48,7 @@ Vérifications : `python3 tools/check_repo.py` puis `python3 tests/run.py`. Les 
 
 ## Participer et obtenir de l’aide
 
-Questions et présentations de sites : [Discussions](https://github.com/GITHUB_OWNER/GITHUB_REPOSITORY/discussions). Bugs reproductibles et propositions précises : [Issues](https://github.com/GITHUB_OWNER/GITHUB_REPOSITORY/issues). Français et anglais acceptés. Lisez [CONTRIBUTING](CONTRIBUTING.fr.md), [SUPPORT](SUPPORT.md), le [code de conduite](CODE_OF_CONDUCT.md) et la [feuille de route](ROADMAP.md).
+Questions et présentations de sites : [Discussions](https://github.com/farhadtoor/voilavoila-cms/discussions). Bugs reproductibles et propositions précises : [Issues](https://github.com/farhadtoor/voilavoila-cms/issues). Français et anglais acceptés. Lisez [CONTRIBUTING](CONTRIBUTING.fr.md), [SUPPORT](SUPPORT.md), le [code de conduite](CODE_OF_CONDUCT.md) et la [feuille de route](ROADMAP.md).
 
 Le code est sous licence MIT. Le logo PASS fourni est exclu de cette licence ; voir [LICENSE](LICENSE) et [NOTICE](NOTICE). Aucun moteur WordPress ou de billetterie PASS n’est embarqué.
 
