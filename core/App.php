@@ -27,7 +27,7 @@ final class App {
             catch(\Throwable $err) {
                 $this->hooks=$hooks; $this->shortcodes=$short; $this->adminPages=$pages;
                 $this->store->change(function(&$s) use($id) { $s['plugins']=array_values(array_diff($s['plugins'],[$id])); Store::log($s,'plugin_disabled_error',$id); });
-                error_log('VV plugin '.$id.': '.$err->getMessage());
+                Logger::error('plugin_'.$id,$err->getMessage(),$err->getFile(),$err->getLine());
             }
         }
         $this->refresh(); \vv_do('init',$this);

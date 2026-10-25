@@ -1,4 +1,4 @@
-# Protections et périmètre
+# Protections et périmètre — 1.1
 
 ## Accès et installation
 
@@ -21,10 +21,10 @@
 ## Médias et fichiers
 
 - Formats autorisés : JPG/PNG/WebP/PDF, 8 Mo maximum. Vérification extension et MIME réels, noms exécutables refusés.
-- Les images passent par un décodage puis une reconstruction PNG : métadonnées et octets annexes ne sont pas conservés. Plafond de dimensions, pixels et mémoire estimée. Les images sont réduites à 2 400 px sur leur plus grand côté. L’orientation EXIF des JPEG n’est pas automatiquement corrigée : faites pivoter les images avant l’import si nécessaire.
+- Les originaux sont conservés sans conversion ni réduction : format, extension, octets et métadonnées EXIF restent identiques. MIME, dimensions, plafond de pixels et décodage GD sont vérifiés avant publication. Aucune image n’est exécutée ou incluse comme PHP. Les métadonnées de localisation éventuellement présentes dans un original ne sont pas retirées automatiquement.
 - Les PDF ne sont pas désarmés ni analysés par antivirus ; ils sont servis en téléchargement avec des en-têtes restrictifs. Le CMS ne prétend pas garantir l’innocuité de leur contenu.
 - Les médias privés nécessitent l’accès propriétaire. Les médias publics sont accessibles par leur lien et peuvent être mis en cache cinq minutes. Le retrait d’un fichier ne peut pas retirer les copies déjà téléchargées.
-- Fichiers de données, médias bruts, sessions et sauvegardes portent un préfixe PHP qui renvoie 404 puis `exit`. Ils ne sont jamais inclus comme code. `.htaccess` et règles Nginx complètent cette protection. La désactivation de PHP exposerait aussi le code du site : n’utilisez pas un hébergement statique.
+- La base SQLite, les médias originaux et les journaux texte n’ont pas d’enveloppe PHP. Ils résident dans le stockage privé : Apache `.htaccess`, Nginx et le routeur local fourni en refusent l’accès direct. Avec Nginx, appliquez explicitement la configuration fournie avant d’exposer le site. `VV_STORAGE_PATH` permet aussi de placer le stockage hors de la racine Web. Sessions, sauvegardes internes et archives historiques conservent leur enveloppe PHP. Ne servez jamais le pack comme un simple dossier statique.
 
 ## Extensions et sauvegardes
 
@@ -38,3 +38,12 @@
 ## Limites de validation
 
 Le pack est vérifié par des tests fonctionnels et des cas d’entrées invalides décrits dans VALIDATION.md. Il ne revendique ni audit externe, ni certification, ni garantie d’absence de vulnérabilité. La maintenance de PHP, du serveur HTTPS et des extensions ajoutées relève du déploiement réel. Un hébergement et des sauvegardes sains restent nécessaires.
+
+## SQLite, migration et journaux
+
+- Les pages/articles sont des lignes SQL, leurs révisions une table liée. Les écritures utilisent des requêtes préparées et une transaction ; une erreur annule les modifications de la transaction.
+- La migration conserve le propriétaire, ses secrets, réglages, contenus, révisions et données d’extensions. L’ancienne source est copiée avant validation, puis les anciennes enveloppes média sont archivées. Les identifiants et liens médias restent stables.
+- Les journaux d’accès et d’erreurs sont deux fichiers texte privés distincts. L’accès conserve méthode, chemin sans query string, statut HTTP, IP directe, durée et identifiant de requête. Il ne copie ni corps POST, mot de passe, cookie ou code de récupération. Les erreurs de modules PHP sont consignées côté propriétaire, sans trace publique.
+- Les événements métier de gestion, comme une connexion ou un enregistrement, restent dans le journal d’activité SQLite. Ils ne sont pas confondus avec le journal technique d’accès.
+- Rotation à 5 Mo et trois archives par type. Lecture/téléchargement depuis Sécurité après authentification ; téléchargement en POST avec CSRF. Les logs n’entrent pas dans la sauvegarde portable.
+- Le journal applicatif commence après le chargement de PHP. Les requêtes bloquées par Apache/Nginx, les ressources statiques, et une erreur de syntaxe empêchant le démarrage du moteur relèvent du journal du serveur/hébergeur.

@@ -1,12 +1,12 @@
-# VoilaVoila CMS 1.0.0
+# VoilaVoila CMS 1.1.0
 
-Un CMS personnel autonome, en PHP, JavaScript et CSS. Un seul compte propriétaire, un profil public, des pages et des articles, des médias, des thèmes et des extensions. Interface sombre, responsive, en français et en anglais. Aucun abonnement, CDN, Composer, Node ou serveur de base de données nécessaire.
+Un CMS personnel autonome, en PHP, JavaScript et CSS. Un seul compte propriétaire, un profil public, des pages et des articles, des médias, des thèmes et des extensions. Interface sombre, responsive, en français et en anglais. SQLite intégré pour les pages, articles et révisions. Aucun abonnement, CDN, Composer, Node ou serveur MySQL nécessaire.
 
 **Commencez par ouvrir INSTALLATION.html.**
 
 ## Installation sur un hébergement
 
-1. Activez PHP **8.3 ou supérieur**, DOM, mbstring et fileinfo. Activez aussi **GD** pour les images et **ZIP** pour les sauvegardes et modules. Mémoire recommandée : 256 Mo. Choisissez une branche PHP encore maintenue et ses correctifs disponibles.
+1. Activez PHP **8.3 ou supérieur**, DOM, mbstring, fileinfo et **pdo_sqlite**. Activez aussi **GD** pour valider les images et **ZIP** pour les sauvegardes et modules. Mémoire recommandée : 256 Mo. Choisissez une branche PHP encore maintenue et ses correctifs disponibles.
 2. Décompressez le pack. Copiez **le contenu du dossier `voila-cms`**, fichiers commençant par un point compris, dans un dossier Web vide. Le CMS peut être installé dans un sous-dossier. Il utilise des liens `index.php?p=...`, sans réécriture d’URL obligatoire.
 3. Donnez au processus PHP le droit d’écrire dans `storage`. Le dossier `content/themes` et `content/plugins` doit être accessible en écriture pour installer des ZIP depuis l’administration. Sur un hébergement mutualisé, 755 pour les dossiers et 644 pour les fichiers suffisent souvent ; cela dépend du propriétaire Unix. N’utilisez pas 777.
 4. Ouvrez `https://votre-site.fr/install.php`. La première visite génère `storage/setup-key.php`.
@@ -18,7 +18,7 @@ L’administration distante refuse HTTP. Le site public doit lui aussi être ser
 
 ### Apache / OVH / hébergement mutualisé
 
-Le fichier `.htaccess` protège les dossiers internes. Les données privées bénéficient aussi d’un préfixe PHP qui termine la requête avant leur contenu. Les données sont du JSON, lues avec `json_decode`, jamais exécutées par le CMS. `.user.ini` propose les limites d’envoi ; vérifiez leur prise en compte dans votre hébergement. PHP ZIP et GD doivent être activés dans votre offre, sinon leurs fonctions restent indisponibles avec un message explicite.
+Le fichier `.htaccess` protège les dossiers internes. La base `storage/cms.sqlite`, les fichiers médias originaux et les journaux texte sont privés : le serveur doit refuser tout accès direct à `storage`. Le CMS sert les médias via `media.php`, après contrôle de visibilité. Les sessions et sauvegardes internes conservent leur enveloppe PHP de protection. `.user.ini` propose les limites d’envoi ; vérifiez leur prise en compte dans votre hébergement. PHP ZIP et GD doivent être activés dans votre offre, sinon leurs fonctions restent indisponibles avec un message explicite.
 
 ### Nginx
 
@@ -45,13 +45,14 @@ Le serveur PHP intégré est réservé aux essais locaux. En Docker, le port est
 | Articles et pages | Création, édition HTML simple, aperçu serveur, FR/EN avec repli, slugs, tags, résumés, images, brouillons, publication, programmation UTC, contenus privés, épinglage, menu, ordre, duplication, corbeille |
 | Révisions | 15 versions antérieures par contenu ; protection contre l’écrasement d’une version modifiée dans un autre onglet |
 | Profil public | Couverture, avatar, nom, bio, liens, localisation, contact, navigation et fil, recherche et partage |
-| Médias | Import JPG/PNG/WebP/PDF, reconstruction des images en PNG, texte alternatif, accès public ou privé, lien, téléchargement et suppression des médias non référencés |
+| Médias | Import JPG/JPEG/PNG/WebP/PDF, octets et extensions originaux conservés, texte alternatif, accès public ou privé, lien, téléchargement et suppression des médias non référencés |
 | Thèmes | Profil Or et Profil Graphite ; activation, installation ZIP au format natif et suppression des thèmes inactifs |
 | Extensions | Activation/désactivation, suppression des modules inactifs sans effacer leurs données, installation ZIP sans activation ; API actions, filtres, shortcodes et pages d’administration |
 | Atelier personnel | Notes privées, tâches textuelles `[ ]` / `[x]`, raccourcis, widget sur le tableau de bord |
 | Connexion PASS | URL HTTPS configurable, bouton de profil et shortcode `[pass]` ; logo de votre archive PASS |
 | Référencement | Méta-description, canonique, Open Graph, sitemap XML et RSS quand l’extension SEO est active et l’URL canonique renseignée |
 | Sécurité | Un seul propriétaire, pas d’inscription, mots de passe hachés, sessions privées expirantes, CSRF, contrôle d’origine, limitations de connexion, récupération, journal limité à 250 événements |
+| Journaux | `storage/logs/access.txt` et `storage/logs/error.txt`, consultation et téléchargement dans Sécurité, rotation à 5 Mo avec trois archives |
 | Outils | Sauvegarde ZIP portable avec médias, restauration avec confirmation et mot de passe, trois points de restauration, import WordPress WXR 1.2 |
 
 La programmation est évaluée à chaque lecture : un article publié avec une date future devient visible à cette date, sans tâche cron ni envoi d’e-mail.
@@ -62,7 +63,7 @@ Les médias marqués publics sont accessibles à toute personne disposant du lie
 
 « Outils & sauvegardes » exporte les contenus, le profil, les médias et les données des extensions. Les identifiants, sessions, secrets serveur et fichiers exécutables ne sont pas exportés. Les sauvegardes contiennent des brouillons et notes privées : conservez-les dans un lieu privé.
 
-Limites : 8 Mo de données éditoriales par ZIP, 64 Mo de données décompressées au total, 2 000 médias et 10 000 contenus restaurés. Pour un site plus grand, sauvegardez le dossier du CMS et son stockage complet par SFTP, idéalement pendant une maintenance. La base de données éditoriale est plafonnée à 32 Mo et réécrite atomiquement à chaque modification : ce moteur vise un profil personnel et un trafic modéré.
+Limites : 8 Mo de données éditoriales par ZIP, 64 Mo de données décompressées au total, 2 000 médias et 10 000 contenus restaurés. Pour un site plus grand, sauvegardez le dossier du CMS et son stockage complet par SFTP, pendant une maintenance sans écriture en cours. Pour une copie SQLite brute, arrêtez les processus PHP avant de copier `cms.sqlite` et son éventuel journal de transaction. La sauvegarde ZIP du CMS fournit une lecture cohérente sans copier un fichier SQLite actif. La base SQLite utilise des transactions et des requêtes préparées. Le CMS charge encore les contenus dans son API de lecture en mémoire : il vise un profil personnel et un trafic modéré. Les réglages et données d’extensions sont limités à 8 Mo ; les sauvegardes portables conservent leurs plafonds propres.
 
 Une restauration remplace la liste des contenus et médias, conserve l’accès propriétaire, ne charge aucun code depuis le ZIP et crée d’abord un point complet. Les versions antérieures des articles ne sont pas réinjectées lors d’une restauration portable ; les corps, statuts, tags et paramètres éditoriaux le sont. Les fichiers de médias non référencés après restauration restent dans le stockage pour éviter une suppression irréversible. Un identifiant média existant ne peut pas recevoir un contenu binaire différent.
 
@@ -87,6 +88,8 @@ Le module natif **Connexion PASS** conserve la billetterie sur son installation 
 - Accès perdu : utilisez le code hors ligne depuis la page de connexion. Le code ne fonctionne qu’une fois et un nouveau code est affiché. Avec l’accès serveur : `php bin/console.php reset-owner`. Il révoque toutes les sessions.
 - Aucun mécanisme automatique de mise à jour distante ou d’envoi d’e-mail n’est activé.
 
+La mise à jour depuis 1.0 est détaillée dans `MISE-A-JOUR-1.1.0.md`.
+
 Voir `docs/ARCHITECTURE.md`, `docs/SECURITE.md`, `sdk/API.md` et `docs/VALIDATION.md`.
 
 ## Références officielles
@@ -98,3 +101,13 @@ Voir `docs/ARCHITECTURE.md`, `docs/SECURITE.md`, `sdk/API.md` et `docs/VALIDATIO
 - https://www.php.net/manual/fr/function.password-hash.php
 - https://www.php.net/manual/en/session.security.ini.php
 - https://www.php.net/supported-versions.php
+
+## Stockage et journaux en 1.1
+
+- `storage/cms.sqlite` : table `contents` avec colonnes des pages/articles, table `revisions` et table `cms_state` pour le propriétaire, réglages, métadonnées de médias et données d’extensions. Les contenus ne sont pas stockés dans le JSON des réglages.
+- `storage/media/<id>.jpg`, `.jpeg`, `.png`, `.webp` ou `.pdf` : véritables fichiers binaires, sans préfixe PHP. Le nom d’origine reste enregistré et proposé au téléchargement. Les images ne sont ni redimensionnées ni réencodées ; leurs métadonnées, y compris EXIF, sont conservées.
+- `storage/logs/access.txt` : date UTC, identifiant de requête, méthode, chemin sans paramètres, code HTTP, IP directe et durée pour les requêtes PHP du CMS. Les fichiers statiques ou requêtes bloquées avant PHP restent du ressort du journal du serveur Web.
+- `storage/logs/error.txt` : erreurs PHP et erreurs applicatives capturées. Les événements de gestion restent aussi dans le journal d’activité de l’administration.
+- Rotation séparée à 5 Mo, trois archives `access.1.txt` à `access.3.txt`, même principe pour les erreurs. Les journaux ne sont pas inclus dans la sauvegarde portable. Ils se téléchargent depuis Sécurité, avec authentification et CSRF.
+
+L’ancienne base JSON et les anciennes images enveloppées en PHP sont conservées dans le stockage de migration. Une image déjà transformée en PNG en 1.0 reste un PNG : les octets du JPEG antérieur ne peuvent pas être reconstitués. Les nouveaux imports conservent le format réellement envoyé.

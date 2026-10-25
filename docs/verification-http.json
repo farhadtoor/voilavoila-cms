@@ -21,7 +21,7 @@
     "stale editor write rejected",
     "future scheduled post hidden",
     "revision restore republishes prior content",
-    "image uploaded and rebuilt",
+    "original PNG image uploaded",
     "public image served",
     "private image hidden anonymously",
     "active disguised file upload rejected",
@@ -53,5 +53,5 @@
     "offline recovery works despite an exhausted login limit"
   ],
   "runtime": "PHP 8.3.6",
-  "date": "2026-10-24T15:41:55.118941+00:00"
+  "date": "2026-10-24T18:13:37.299967+00:00"
 }

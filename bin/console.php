@@ -24,10 +24,13 @@ switch($command) {
     case 'safe-mode':
         $vv->store->change(function(&$s){$s['plugins']=[]; $s['settings']['theme']='profil-or'; Store::log($s,'safe_mode_cli');});
         echo "Extensions désactivées. Thème Profil Or restauré. Contenus conservés.\n"; break;
+    case 'migrate':
+        echo 'Stockage SQLite prêt : '.$vv->store->databasePath()."\nMigration automatique terminée ou déjà effectuée.\n"; break;
     case 'status':
         echo 'VoilaVoila CMS '.VV_VERSION."\nPHP ".PHP_VERSION."\n";
+        echo 'SQLite : '.$vv->store->databasePath()."\n";
         echo 'Installé : '.($vv->state['installed']?'oui':'non')."\nContenus : ".count($vv->state['contents'])."\nMédias : ".count($vv->state['media'])."\n";
-        foreach(['dom','mbstring','fileinfo','gd','zip'] as $module) echo $module.' : '.(extension_loaded($module)?'OK':'ABSENT')."\n";
+        foreach(['dom','mbstring','fileinfo','pdo_sqlite','gd','zip'] as $module) echo $module.' : '.(extension_loaded($module)?'OK':'ABSENT')."\n";
         break;
     default: echo "VoilaVoila CMS\n\nphp bin/console.php install-key   Afficher la clé de première installation\nphp bin/console.php status        Vérifier la configuration\nphp bin/console.php reset-owner   Réinitialiser l’accès localement\nphp bin/console.php safe-mode     Désactiver les extensions et restaurer Profil Or\n";
 }

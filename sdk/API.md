@@ -85,7 +85,7 @@ $vv->adminPage('mon-module', t('Mon module', 'My module'),
 
 Le contrôleur central exige déjà authentification, POST, origine et CSRF avant le callback `save`. Une action qui exporte des données, supprime des fichiers ou change un accès doit en plus appeler `VV\Security::reauth($app->store, $motDePasseActuel)` et respecter les permissions locales. Les callbacks publics ne bénéficient pas de cette autorisation.
 
-`$app->state` est un instantané de lecture. Pour écrire, utilisez **toujours** `$app->store->change(...)`, qui relit l’état sous verrou. Écrivez uniquement sous `plugin_data[identifiant]`. N’ouvrez pas une nouvelle transaction pendant ce callback ; le verrou n’est pas réentrant. Après écriture, appelez `$app->refresh()` si vous devez relire dans la même requête. La désactivation d’un module conserve ses données.
+`$app->state` est un instantané de lecture. La version 1.1 conserve cette façade avec SQLite. Les contenus sont des lignes SQL et ne doivent pas être écrits dans `cms_state` par une extension. Pour écrire, utilisez **toujours** `$app->store->change(...)`, qui relit l’état sous verrou. Écrivez uniquement sous `plugin_data[identifiant]`. N’ouvrez pas une nouvelle transaction pendant ce callback ; le verrou n’est pas réentrant. Après écriture, appelez `$app->refresh()` si vous devez relire dans la même requête. La désactivation d’un module conserve ses données.
 
 ## Thèmes
 

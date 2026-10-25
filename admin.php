@@ -57,12 +57,17 @@ if(($_SERVER['REQUEST_METHOD'] ?? '')==='POST') {
                 }); break;
             case 'media.delete':
                 $id=val($_POST,'id'); Security::reauth($vv->store,val($_POST,'current_password'));
+                $mediaToDelete=$vv->state['media'][$id] ?? null;
                 $vv->store->change(function(&$s) use($id,$vv) {
                     if(!isset($s['media'][$id])) throw new Failure('Média introuvable.',404);
                     if(str_contains(json_encode([$s['settings'],$s['contents']]),$id)) throw new Failure('Ce média est utilisé par le profil, un contenu ou une révision. Retirez ses références avant suppression.');
                     unset($s['media'][$id]); Store::log($s,'media_deleted',$id);
                 });
-                @unlink($vv->store->dir.'/media/'.$id.'.php'); break;
+                if($mediaToDelete) @unlink($vv->store->mediaPath($mediaToDelete)); break;
+            case 'logs.download':
+                $logType=val($_POST,'type'); $logText=\VV\Logger::read($logType);
+                header('Content-Type: text/plain; charset=utf-8'); header('Content-Disposition: attachment; filename="'.$logType.'.txt"');
+                header('Content-Length: '.strlen($logText)); echo $logText; exit;
             case 'settings.save':
                 $settings=Tools::settings($_POST,$vv->state['settings'],$vv->state['media']);
                 $vv->store->change(function(&$s) use($settings) {
@@ -131,6 +136,7 @@ if(($_SERVER['REQUEST_METHOD'] ?? '')==='POST') {
         $_SESSION['flash']=$message; redirect($destination);
     } catch(Failure $err) {
         $error=$err->getMessage(); http_response_code($err->status);
+        if($err->status>=500) \VV\Logger::error('admin_action',$error,$err->getFile(),$err->getLine());
         if(val($_POST,'action')==='editor.preview') { header('Content-Type: application/json; charset=utf-8'); echo json_encode(['error'=>$error]); exit; }
     }
 }

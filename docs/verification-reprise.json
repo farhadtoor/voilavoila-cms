@@ -1,0 +1,7 @@
+{
+  "checks": 2,
+  "passed": [
+    "incomplete legacy migration rolls back and preserves source",
+    "corrected legacy migration can be retried successfully"
+  ]
+}

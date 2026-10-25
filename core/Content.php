@@ -101,37 +101,6 @@ final class Content {
         return $id;
     }
     public static function upload(Store $store,array $file,bool $public,string $alt=''): string {
-        if(($file['error'] ?? 1)!==UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'] ?? '')) throw new Failure('Choisissez un fichier valide (8 Mo maximum).');
-        $bytes=file_get_contents($file['tmp_name']); $name=self::text($file['name'] ?? 'media',160);
-        if(strlen($bytes)<1 || strlen($bytes)>8*1024*1024) throw new Failure('Fichier limité à 8 Mo.',413);
-        $mime=(new \finfo(FILEINFO_MIME_TYPE))->buffer($bytes); $ext=strtolower(pathinfo($name,PATHINFO_EXTENSION));
-        $types=['jpg'=>'image/jpeg','jpeg'=>'image/jpeg','png'=>'image/png','webp'=>'image/webp','pdf'=>'application/pdf'];
-        if(($types[$ext] ?? '')!==$mime || preg_match('/(?:^|\.)(php\d*|phtml|phar|html?|svg|js|htaccess)(?:\.|$)/i',$name)) throw new Failure('Formats autorisés : JPG, PNG, WebP et PDF.');
-        if($mime!=='application/pdf') {
-            if(!extension_loaded('gd')) throw new Failure('Activez PHP GD pour importer les images.',503);
-            $info=@getimagesizefromstring($bytes);
-            if(!$info || $info[0]>6000 || $info[1]>6000 || $info[0]*$info[1]>8000000) throw new Failure('Image trop grande : 8 mégapixels et 6 000 px maximum.');
-            $memory=ini_get('memory_limit'); $unit=strtolower(substr($memory,-1));
-            $limit=(int)$memory * match($unit){'g'=>1073741824,'m'=>1048576,'k'=>1024,default=>1};
-            if($limit>0 && memory_get_usage(true)+16*$info[0]*$info[1]+16*1024*1024>$limit) throw new Failure('Mémoire PHP insuffisante : réduisez les dimensions de l’image.');
-            $src=@imagecreatefromstring($bytes); if(!$src) throw new Failure('Image illisible.');
-            $ratio=min(1,2400/max($info[0],$info[1])); $w=max(1,(int)round($info[0]*$ratio)); $h=max(1,(int)round($info[1]*$ratio));
-            $dst=imagecreatetruecolor($w,$h); imagealphablending($dst,false); imagesavealpha($dst,true);
-            imagefill($dst,0,0,imagecolorallocatealpha($dst,0,0,0,127));
-            imagecopyresampled($dst,$src,0,0,0,0,$w,$h,$info[0],$info[1]);
-            ob_start(); $ok=imagepng($dst,null,6); $bytes=ob_get_clean(); imagedestroy($src); imagedestroy($dst);
-            if(!$ok || strlen($bytes)>8*1024*1024) throw new Failure('Image trop volumineuse après traitement.');
-            $mime='image/png'; $name=pathinfo($name,PATHINFO_FILENAME).'.png';
-        } elseif(!str_starts_with($bytes,'%PDF-')) throw new Failure('PDF invalide.');
-        $id=bin2hex(random_bytes(12));
-        $store->privateWrite($store->dir.'/media/'.$id.'.php',$bytes);
-        try {
-            $store->change(function(&$s) use($id,$name,$mime,$bytes,$public,$alt) {
-                if(count($s['media'])>=2000) throw new Failure('Médiathèque limitée à 2 000 fichiers.',413);
-                $s['media'][$id]=['id'=>$id,'name'=>$name,'mime'=>$mime,'size'=>strlen($bytes),'sha256'=>hash('sha256',$bytes),'public'=>$public,'alt'=>self::text($alt,250),'created_at'=>gmdate('c')];
-                Store::log($s,'media_uploaded',$name);
-            });
-        } catch(\Throwable $e) { @unlink($store->dir.'/media/'.$id.'.php'); throw $e; }
-        return $id;
+        return Media::upload($store,$file,$public,$alt);
     }
 }

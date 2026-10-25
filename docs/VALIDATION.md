@@ -1,36 +1,37 @@
-# Vérifications du pack 1.0.0
+# Validation de VoilaVoila CMS 1.1.0
 
-Date : 24 octobre 2026. Tests exécutés sur une installation isolée avec PHP CLI 8.3.6, DOM, mbstring, fileinfo, GD et ZIP, et un navigateur Chromium piloté automatiquement. Aucune donnée ou commande de la billetterie en ligne n’a été modifiée.
+Tests du 24 octobre 2026 sur une installation isolée, PHP 8.3.6 avec PDO SQLite, DOM, mbstring, fileinfo, GD et ZIP. Aucun site ou événement en ligne n’a été modifié.
 
-## Tests fonctionnels HTTP : 50 contrôles réussis
+## Résultats
 
-- Installateur, preuve d’accès au fichier privé, création du propriétaire, code de récupération, suppression de la clé et verrouillage de l’installation.
-- Chargement des modules natifs, absence d’accès anonyme à l’administration, cookie HttpOnly, CSRF et refus d’une origine externe.
-- Création d’un brouillon, nettoyage du HTML, confidentialité des brouillons, aperçu propriétaire et refus des aperçus anonymes.
-- Publication, absence de bandeau d’aperçu public, révisions, conflit de version, programmation future et restauration d’une révision.
-- Import d’une image réelle, reconstruction PNG, diffusion publique, confidentialité d’un média privé, refus d’un fichier exécutable déguisé.
-- Changement de thème sans effacement de données, activation et configuration du lien PASS, rendu du bouton.
-- Atelier privé : enregistrement de notes et absence de fuite dans le profil public.
-- Refus d’un chemin ZIP `../`, installation native inactive, exécution d’un hook, refus de suppression d’un module actif, suppression d’un module inactif.
-- Sauvegarde ZIP avec médias, exclusion des secrets du propriétaire, restauration du contenu et des dates, maintien de l’identité du propriétaire, point de restauration préalable.
-- Import WXR en brouillon, déduplication d’un même export, refus des déclarations d’entités externes XML.
-- Rendu FR/EN, vrai statut 404, refus d’un faux en-tête HTTPS venant d’un proxy non configuré.
-- Changement de mot de passe, révocation d’une autre session, récupération par code, limitation des connexions, récupération possible avec un code valide malgré une limite de connexion atteinte.
+| Ensemble | Résultat |
+| --- | --- |
+| Parcours HTTP existants, adaptés à SQLite | 50 contrôles réussis |
+| Migration, fichiers originaux, journaux et transactions | 35 contrôles réussis |
+| Échec de migration, annulation puis reprise | 2 contrôles réussis |
+| Interface navigateur ordinateur/mobile | 29 contrôles réussis, aucune erreur JavaScript |
 
-## Interface navigateur : 29 contrôles réussis, aucune erreur JavaScript
+Les rapports JSON sont fournis dans ce dossier. Les tests HTTP couvrent installation, accès propriétaire, CSRF, origine, brouillons, aperçus, publication, programmation, révisions, conflit entre onglets, médias privés, refus de fichiers déguisés, thèmes/extensions, sauvegardes, import WordPress, récupération et révocation des sessions.
 
-Les écrans d’administration sont parcourus sur ordinateur (1 440 px) et mobile (390 px). Vérification des débordements horizontaux, des menus mobiles, de la palette Ctrl/⌘ K, des onglets linguistiques, de l’aperçu HTML nettoyé, de l’enregistrement d’un article depuis le navigateur et du rendu public français/anglais. Contrôle de conservation du texte de l’éditeur après déconnexion dans une autre requête.
+## Vérifications propres à 1.1
 
-Les captures d’écran de l’administration et du profil ont été inspectées visuellement pendant la préparation. Aucun screenshot contenant des identifiants ou des informations de paiement n’est livré.
+- Migration depuis une base 1.0 avec contenus dans les différents statuts, révision antérieure et média enveloppé en PHP. Comparaison des identifiants, champs, statuts, dates, versions et révisions après lecture des tables SQLite.
+- Vérification que les corps des articles/pages sont des colonnes de `contents`, et non une simple copie du JSON des réglages. Révisions dans une table liée. `PRAGMA integrity_check` réussi.
+- Conservation du propriétaire, réglages et données d’extensions ; copie de l’ancienne base ; archivage des anciennes enveloppes média ; absence de réimport des anciennes données après initialisation.
+- Envoi de JPEG, PNG et WebP réels. Comparaison octet par octet et SHA-256 entre fichier envoyé, fichier enregistré avec sa véritable extension et réponse de `media.php`.
+- Vérification des liens hérités, de la confidentialité d’un JPEG privé et du refus d’accès direct aux originaux et au fichier SQLite par le routeur du serveur local.
+- Erreur contrôlée d’une extension : message dans `error.txt`, absence dans `access.txt` et dans la page publique. Journal d’accès sans query string ni valeur secrète transmise en paramètre de test.
+- Téléchargement authentifié de chaque fichier TXT, refus de lecture directe et rotation séparée du journal d’erreur à 5 Mo.
+- Transaction provoquant volontairement un doublon de slug : retour intégral à l’état précédent des contenus et des réglages.
+- Import d’une sauvegarde 1.0 avec fichiers `.bin` vers des fichiers aux extensions réelles, puis initialisation répétée sans écrasement des données SQLite récentes.
+- Média manquant dans une ancienne installation : commande de migration en échec avec code de sortie non nul, base non initialisée, source intacte. Après restitution du fichier manquant, migration réussie.
 
-## Vérifications du code et du paquet
+## Interface et paquet
 
-- Analyse syntaxique de tous les fichiers PHP livrés.
-- Analyse syntaxique des deux scripts JavaScript natifs.
-- Contrôle de déplacement des références de médias entre sous-dossiers pour les sauvegardes portables.
-- Vérification de l’archive ZIP finale et de ses empreintes SHA-256.
-- Le dossier `storage` livré contient uniquement sa protection et son fichier index. Aucun compte, mot de passe, session, sauvegarde ou média de test n’est livré.
+L’administration et le profil ont été parcourus à 1 440 px et 390 px : menus, palette Ctrl/⌘ K, onglets FR/EN, aperçu serveur, enregistrement et conservation du texte après expiration de session. Les pages Sécurité et Médias sont incluses dans le contrôle de débordement horizontal.
 
-## Périmètre non exécuté
+Tous les PHP livrés passent l’analyse syntaxique, ainsi que les JS natifs. Le paquet est contrôlé par CRC ZIP et manifeste SHA-256. Il ne contient aucun compte, session, journal, média de test ou base SQLite préremplie.
 
-Le déploiement sur l’hébergement réel, Apache/Nginx avec certificat réel, Docker, le double-clic du lanceur sur macOS et le portage du moteur transactionnel PASS n’ont pas été exécutés dans cet environnement. Les modèles de déploiement et le guide sont fournis. Les tests ne constituent pas un audit externe de sécurité.
+## Limites
+
+Le déploiement sur l’hébergement réel, les configurations Apache/Nginx avec certificat réel, Docker et le double-clic du lanceur macOS n’ont pas été exécutés dans cet environnement. Les règles de refus d’accès direct à `storage` doivent être appliquées sur le serveur cible. Ces vérifications ne constituent pas un audit externe de sécurité.

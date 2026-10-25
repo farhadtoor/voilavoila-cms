@@ -94,15 +94,15 @@ final class Tools {
             $app->store->change(function(&$s) use($app,$tmp) {
                 $zip=new \ZipArchive(); if($zip->open($tmp,\ZipArchive::OVERWRITE)!==true) throw new Failure('Sauvegarde impossible.',503);
                 try {
-                    $data=['format'=>'voilavoila-cms','schema'=>1,'created_at'=>gmdate('c'),'version'=>VV_VERSION,'settings'=>$s['settings'],'contents'=>$s['contents'],'media'=>$s['media'],'plugin_data'=>$s['plugin_data']];
+                    $data=['format'=>'voilavoila-cms','schema'=>2,'created_at'=>gmdate('c'),'version'=>VV_VERSION,'settings'=>$s['settings'],'contents'=>$s['contents'],'media'=>$s['media'],'plugin_data'=>$s['plugin_data']];
                     $json=json_encode($data,JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
                     if(strlen($json)>8*1024*1024) throw new Failure('Export limité à 8 Mo de données éditoriales.',413);
                     $zip->addFromString('data.json',$json); $total=strlen($json);
                     foreach($s['media'] as $id=>$m) {
-                        $bytes=$app->store->privateRead($app->store->dir.'/media/'.$id.'.php');
+                        $bytes=$app->store->readMedia($m);
                         $total+=strlen($bytes); if($total>64*1024*1024) throw new Failure('Export complet limité à 64 Mo. Copiez storage par SFTP pour un site plus grand.',413);
                         if(!hash_equals($m['sha256'],hash('sha256',$bytes))) throw new Failure('Un média est incomplet. Sauvegarde interrompue.',503);
-                        $zip->addFromString('media/'.$id.'.bin',$bytes);
+                        $zip->addFromString('media/'.$m['stored_name'],$bytes);
                     }
                 } finally { $zip->close(); }
             });
@@ -122,16 +122,19 @@ final class Tools {
         try {
             $entries=self::zipEntries($zip); if(!isset($entries['data.json'])) throw new Failure('data.json absent.');
             $data=json_decode($zip->getFromName('data.json'),true,80,JSON_THROW_ON_ERROR);
-            if(($data['format'] ?? '')!=='voilavoila-cms' || ($data['schema'] ?? 0)!==1) throw new Failure('Format de sauvegarde incompatible.');
+            if(($data['format'] ?? '')!=='voilavoila-cms' || !in_array(($data['schema'] ?? 0),[1,2],true)) throw new Failure('Format de sauvegarde incompatible.');
             foreach(['contents','settings','media','plugin_data'] as $k) if(!is_array($data[$k] ?? null)) throw new Failure('Sauvegarde incomplète.');
             if(count($data['contents'])>10000 || count($data['media'])>2000) throw new Failure('Sauvegarde trop volumineuse.');
-            $contents=[]; $media=[]; $ids=[];
+            $contents=[]; $media=[]; $ids=[]; $mediaEntries=[];
             foreach($data['media'] as $id=>$m) {
-                if(!is_string($id) || !preg_match('/^[a-f0-9]{24}$/D',$id) || !is_array($m) || !isset($entries['media/'.$id.'.bin'])) throw new Failure('Média manquant.');
-                $bytes=$zip->getFromName('media/'.$id.'.bin'); $mime=(new \finfo(FILEINFO_MIME_TYPE))->buffer($bytes);
-                if(!in_array($mime,['image/png','image/jpeg','image/webp','application/pdf'],true) || !hash_equals(\val($m,'sha256'),hash('sha256',$bytes))) throw new Failure('Intégrité du média incorrecte.');
-                if($mime!=='application/pdf') { $info=@getimagesizefromstring($bytes); if(!$info || $info[0]*$info[1]>8000000) throw new Failure('Image invalide.'); }
-                $media[$id]=['id'=>$id,'name'=>Content::text(\val($m,'name'),160),'mime'=>$mime,'size'=>strlen($bytes),'sha256'=>hash('sha256',$bytes),'public'=>!empty($m['public']),'alt'=>Content::text(\val($m,'alt'),250),'created_at'=>gmdate('c')];
+                if(!is_string($id) || !preg_match('/^[a-f0-9]{24}$/D',$id) || !is_array($m)) throw new Failure('Média invalide.');
+                $stored=\val($m,'stored_name');
+                $entry=preg_match('/^'.preg_quote($id,'/').'\\.(jpg|jpeg|png|webp|pdf)$/D',$stored)?'media/'.$stored:'media/'.$id.'.bin';
+                if(!isset($entries[strtolower($entry)])) throw new Failure('Média manquant.');
+                $bytes=$zip->getFromName($entry);
+                if(!hash_equals(\val($m,'sha256'),hash('sha256',$bytes))) throw new Failure('Intégrité du média incorrecte.');
+                $media[$id]=Media::metadata(['id'=>$id,'name'=>Content::text(\val($m,'name'),160),'public'=>!empty($m['public']),'alt'=>Content::text(\val($m,'alt'),250),'created_at'=>Content::timestamp(\val($m,'created_at'))],$bytes);
+                $mediaEntries[$id]=$entry;
             }
             foreach($data['contents'] as $id=>$c) {
                 if(!is_string($id) || !preg_match('/^[a-f0-9]{24}$/D',$id) || !is_array($c)) throw new Failure('Contenu invalide.');
@@ -147,12 +150,10 @@ final class Tools {
             $theme=\val($data['settings'],'theme'); $settings['theme']=isset($app->packages('theme')[$theme])?$theme:'profil-or';
             if(!isset($contents[$settings['home_page']])) $settings['home_page']='';
             self::snapshot($app);
-            $app->store->change(function(&$s) use($app,$zip,$media,$contents,$settings,$data) {
+            $app->store->change(function(&$s) use($app,$zip,$media,$mediaEntries,$contents,$settings,$data) {
                 foreach($media as $id=>$m) {
-                    $path=$app->store->dir.'/media/'.$id.'.php';
-                    // Media ids are immutable: a restore may never replace bytes currently referenced.
-                    if(is_file($path) && hash('sha256',$app->store->privateRead($path))!==$m['sha256']) throw new Failure('Conflit de média. Restaurez dans une installation séparée.',409);
-                    if(!is_file($path)) $app->store->privateWrite($path,$zip->getFromName('media/'.$id.'.bin'));
+                    if(isset($s['media'][$id]) && !hash_equals($s['media'][$id]['sha256'],$m['sha256'])) throw new Failure('Conflit de média. Restaurez dans une installation séparée.',409);
+                    $app->store->writeMedia($m,$zip->getFromName($mediaEntries[$id]));
                 }
                 $s['contents']=$contents; $s['media']=$media; $s['settings']=$settings; $s['plugin_data']=$data['plugin_data'];
                 Store::log($s,'backup_restored');

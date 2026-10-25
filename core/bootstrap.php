@@ -1,13 +1,17 @@
 <?php
 declare(strict_types=1);
 define('VV_ROOT', dirname(__DIR__));
-define('VV_VERSION', '1.0.0');
-if (PHP_VERSION_ID < 80300 || !extension_loaded('dom') || !extension_loaded('mbstring') || !extension_loaded('fileinfo')) {
+define('VV_VERSION', '1.1.0');
+if (PHP_VERSION_ID < 80300 || !extension_loaded('dom') || !extension_loaded('mbstring') || !extension_loaded('fileinfo') || !extension_loaded('pdo_sqlite')) {
     http_response_code(503); header('Content-Type: text/plain; charset=utf-8');
-    exit('VoilaVoila CMS demande PHP 8.3+ et les extensions DOM, mbstring et fileinfo. Consultez INSTALLATION.html.');
+    $message='VoilaVoila CMS demande PHP 8.3+ et les extensions DOM, mbstring, fileinfo et pdo_sqlite. Consultez INSTALLATION.html.';
+    if(PHP_SAPI==='cli') { fwrite(STDERR,$message.PHP_EOL); exit(1); }
+    exit($message);
 }
 ini_set('display_errors','0'); error_reporting(E_ALL); date_default_timezone_set('UTC');
 require __DIR__.'/Store.php';
+require __DIR__.'/Logger.php';
+require __DIR__.'/Media.php';
 require __DIR__.'/Security.php';
 require __DIR__.'/Content.php';
 require __DIR__.'/App.php';
@@ -26,12 +30,21 @@ function fail_page(string $message, int $status=400): never {
     echo '<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link rel="stylesheet" href="'.e(url('assets/admin.css')).'"><title>VoilaVoila CMS</title><main class="auth-card"><span class="eyebrow">VOILAVOILA CMS</span><h1>Une étape à vérifier</h1><p>'.e($message).'</p><a class="button" href="'.e(url('admin.php')).'">Administration</a></main></html>'; exit;
 }
 set_exception_handler(function (Throwable $err) {
-    if ($err instanceof \VV\Failure) fail_page($err->getMessage(),$err->status);
-    error_log('VV CMS: '.$err->getMessage());
-    fail_page('Une erreur est survenue. Vos données restent conservées. Consultez les journaux PHP de votre hébergement.',500);
+    if(PHP_SAPI==='cli') {
+        if(!($err instanceof \VV\Failure) || $err->status>=500) \VV\Logger::error('cli',$err->getMessage(),$err->getFile(),$err->getLine());
+        fwrite(STDERR,($err instanceof \VV\Failure?$err->getMessage():'Erreur du CMS. Consultez error.txt.').PHP_EOL); exit(1);
+    }
+    if ($err instanceof \VV\Failure) {
+        if($err->status>=500) \VV\Logger::error('application',$err->getMessage(),$err->getFile(),$err->getLine());
+        fail_page($err->getMessage(),$err->status);
+    }
+    \VV\Logger::error('exception',$err->getMessage(),$err->getFile(),$err->getLine());
+    fail_page('Une erreur est survenue. Consultez le journal error.txt dans votre stockage privé.',500);
 });
 \VV\Security::headers(defined('VV_ADMIN'));
-$vv = new \VV\App(new \VV\Store(getenv('VV_STORAGE_PATH') ?: VV_ROOT.'/storage'));
+$vvStorage=getenv('VV_STORAGE_PATH') ?: VV_ROOT.'/storage';
+\VV\Logger::init($vvStorage);
+$vv = new \VV\App(new \VV\Store($vvStorage));
 if (defined('VV_ADMIN')) \VV\Security::session($vv->store);
 
 // Small, explicit extension API. PHP extensions are trusted server-side code.
