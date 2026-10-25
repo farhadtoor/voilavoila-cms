@@ -1,0 +1,11 @@
+Options -Indexes
+DirectoryIndex index.php
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule ^(?:core|storage|bin|sdk|docs)(?:/|$) - [F,L,NC]
+RewriteRule ^content/(?:plugins|themes)/.*\.php$ - [F,L,NC]
+RewriteRule (^|/)\.(?!well-known/) - [F,L]
+</IfModule>
+<FilesMatch "(?i)(^\.env|\.bak$|\.log$|\.sql$|\.xml$|\.md$|^Dockerfile$|^compose\.yaml$|^Lancer-Mac\.command$)">
+Require all denied
+</FilesMatch>

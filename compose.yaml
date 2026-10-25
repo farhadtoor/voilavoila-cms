@@ -1,0 +1,12 @@
+services:
+  cms:
+    build: .
+    ports:
+      - "127.0.0.1:8787:80"
+    volumes:
+      - vv_cms_storage:/var/www/html/storage
+      - vv_cms_modules:/var/www/html/content
+    restart: unless-stopped
+volumes:
+  vv_cms_storage:
+  vv_cms_modules:

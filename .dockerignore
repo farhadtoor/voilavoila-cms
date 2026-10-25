@@ -1,0 +1,6 @@
+storage/*
+!storage/.htaccess
+!storage/index.php
+*.zip
+.git
+.DS_Store
