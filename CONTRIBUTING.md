@@ -26,6 +26,16 @@ node --check assets/site.js
 
 PHP and extensions are required for integration tests; Node is needed only for JavaScript checks. The [testing guide](docs/en/testing.md) explains supported commands. Include a focused regression check for a behavioral bug where useful. Documentation-only changes need link/content checks, not new runtime tests.
 
+## Commit co-authors
+
+To include the configured AI co-authors automatically in commit messages, run this once in each clone:
+
+```sh
+./scripts/setup-ai-attribution.sh
+```
+
+The repository-local hook adds Codex and Claude `Co-authored-by:` trailers. Add another co-author with `git config --local --add ai.coauthor "Name <email>"`. GitHub only credits a co-author when the trailer email is associated with that GitHub account. To skip attribution on one commit, prefix the commit command with `SKIP_AI_COAUTHORS=1`.
+
 ## Code and data conventions
 
 Keep existing file conventions. Use prepared SQL, `Store::change()` for state writes, server-side validation and escaped HTML. Native PHP module files require the `VV_ROOT` direct-access guard. Do not nest store transactions. A plugin must write only in its own `plugin_data` namespace. Avoid new runtime dependencies without discussing their value and maintenance cost.

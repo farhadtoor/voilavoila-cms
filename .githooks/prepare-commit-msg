@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+msg_file=${1:?commit message file is required}
+commit_source=${2-}
+
+if [[ "${SKIP_AI_COAUTHORS:-0}" == "1" || "$commit_source" == "merge" ]]; then
+  exit 0
+fi
+
+coauthors=()
+while IFS= read -r coauthor; do
+  if [[ -n "$coauthor" ]]; then
+    coauthors+=("$coauthor")
+  fi
+done < <(git config --get-all ai.coauthor || true)
+
+if ((${#coauthors[@]} == 0)); then
+  exit 0
+fi
+
+python3 - "$msg_file" "${coauthors[@]}" <<'PY'
+from pathlib import Path
+import sys
+
+message_path = Path(sys.argv[1])
+text = message_path.read_text(encoding="utf-8")
+existing = {line.strip().casefold() for line in text.splitlines()}
+trailers = []
+
+for coauthor in sys.argv[2:]:
+    trailer = f"Co-authored-by: {coauthor}"
+    if trailer.casefold() not in existing:
+        trailers.append(trailer)
+        existing.add(trailer.casefold())
+
+if trailers:
+    message = text.rstrip("\r\n")
+    if message:
+        message += "\n\n"
+    message += "\n".join(trailers) + "\n"
+    message_path.write_text(message, encoding="utf-8")
+PY
