@@ -7,7 +7,7 @@ $table_prefix=$vv_config['prefix'];
 define('WP_HOME',$vv_config['public_url']);define('WP_SITEURL',$vv_config['public_url']);
 define('DISALLOW_FILE_EDIT',true);define('DISALLOW_FILE_MODS',true);define('AUTOMATIC_UPDATER_DISABLED',true);define('DISABLE_WP_CRON',true);
 define('WP_HTTP_BLOCK_EXTERNAL',true);define('WP_ACCESSIBLE_HOSTS',implode(',',$vv_config['outbound_hosts']??[]));
-define('WP_DEBUG',false);define('WP_DEBUG_DISPLAY',false);define('WP_ENVIRONMENT_TYPE','staging');define('WP_MEMORY_LIMIT','128M');define('WP_MAX_MEMORY_LIMIT','256M');
+define('WP_DEBUG',false);define('WP_DEBUG_DISPLAY',false);define('WP_ENVIRONMENT_TYPE','staging');define('WP_MEMORY_LIMIT','256M');define('WP_MAX_MEMORY_LIMIT','256M');
 define('FORCE_SSL_ADMIN',str_starts_with($vv_config['public_url'],'https://'));
 if(!defined('ABSPATH'))define('ABSPATH',__DIR__.'/');
 require_once ABSPATH.'wp-settings.php';

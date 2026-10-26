@@ -1,5 +1,10 @@
 # Changelog / Historique
 
+## 1.3.1
+
+Add the optional authenticator enforcement hook, encrypted TOTP plugin, local QR and recovery codes. Upgrade optional WordPress Engine to 0.2 with offline official inputs, large plugin wrapping, full compatibility profile, native editorial copies and WooCommerce integration coverage. Native SQLite schema and media formats are unchanged.
+
+
 ## 1.3.0
 
 Optional Forms/private inbox, transactional notification outbox, retention and exports; original logo and French signature; optional experimental private WordPress Runtime. Backup export/download now requires the current owner password.

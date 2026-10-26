@@ -9,11 +9,11 @@ add_filter('wp_headers',function($headers){unset($headers['X-Pingback'],$headers
 add_filter('pre_wp_mail',function($return){return !empty($GLOBALS['vv_engine_context']['login'])?false:$return;});
 // Public policy applies before plugin callbacks; owner requests retain normal WP capabilities/nonces.
 add_action('plugins_loaded',function(){
-    $ctx=$GLOBALS['vv_engine_context'];if($ctx['owner'])return;$rule=$ctx['rule']??null;
+    $ctx=$GLOBALS['vv_engine_context'];if($ctx['owner']||!empty($ctx['compatibility']))return;$rule=$ctx['rule']??null;
     if($rule){$active=(array)get_option('active_plugins',[]);$prefix=$rule['plugin'].'/';$found=false;foreach($active as $plugin)if(str_starts_with($plugin,$prefix))$found=true;if(!$found){status_header(403);exit('Inactive bridge plugin.');}}
     elseif(wp_doing_ajax()){status_header(403);exit('Undeclared bridge action.');}
 },-999);
-add_filter('rest_authentication_errors',function($result){if($GLOBALS['vv_engine_context']['owner'])return $result;$rule=$GLOBALS['vv_engine_context']['rule']??null;return $rule&&$rule['kind']==='rest'?$result:new WP_Error('vv_rest_closed','Public REST route closed.',['status'=>403]);},-999);
+add_filter('rest_authentication_errors',function($result){if($GLOBALS['vv_engine_context']['owner']||!empty($GLOBALS['vv_engine_context']['compatibility']))return $result;$rule=$GLOBALS['vv_engine_context']['rule']??null;return $rule&&$rule['kind']==='rest'?$result:new WP_Error('vv_rest_closed','Public REST route closed.',['status'=>403]);},-999);
 function vv_engine_asset_url($url) {
     if(!is_string($url))return $url;$cfg=$GLOBALS['vv_engine_config'];$base=$cfg['public_url'];
     if(!str_starts_with($url,$base.'/')&&!str_starts_with($url,'/compat/'))return $url;
@@ -37,3 +37,16 @@ function vv_engine_brand() {
 add_action('wp_footer',function(){echo vv_engine_brand();},999);
 add_filter('admin_footer_text',fn()=>vv_engine_brand());
 add_action('admin_bar_menu',function($bar){$bar->add_node(['id'=>'voilavoila','title'=>'VoilaVoila CMS','href'=>$GLOBALS['vv_engine_config']['cms_url'].'/admin.php']);},999);
+
+// Keep editorial/owner management in VoilaVoila; plugin business screens stay available.
+add_action('admin_menu',function(){foreach(['index.php','edit.php','upload.php','edit.php?post_type=page','edit-comments.php','users.php','tools.php','options-general.php'] as $menu)remove_menu_page($menu);},999);
+add_action('admin_bar_menu',function($bar){foreach(['new-content','comments','updates'] as $id)$bar->remove_node($id);},1000);
+add_filter('use_block_editor_for_post',function($enabled,$post){return get_post_meta($post->ID,'_vv_cms_id',true)?false:$enabled;},10,2);
+add_action('edit_form_after_title',function($post){if(get_post_meta($post->ID,'_vv_cms_id',true))echo '<div class="notice notice-info"><p>Editorial source: VoilaVoila CMS. This WordPress copy is replaced on synchronization.</p></div>';});
+// Privileged browser cookies cannot outlive the native owner handoff (including MFA revocation).
+// Independent API credentials keep their own WordPress/WooCommerce authentication rules.
+add_action('auth_cookie_valid',function(){$GLOBALS['vv_owner_cookie_seen']=true;},1);
+add_filter('determine_current_user',function($id){
+    if($id&&empty($GLOBALS['vv_engine_context']['owner'])&&!empty($GLOBALS['vv_owner_cookie_seen'])&&user_can($id,'manage_options'))return 0;
+    return $id;
+},999);

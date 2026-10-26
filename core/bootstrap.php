@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 define('VV_ROOT', dirname(__DIR__));
-define('VV_VERSION', '1.3.0');
+define('VV_VERSION', '1.3.1');
 if (PHP_VERSION_ID < 80300 || !extension_loaded('dom') || !extension_loaded('mbstring') || !extension_loaded('fileinfo') || !extension_loaded('pdo_sqlite')) {
     http_response_code(503); header('Content-Type: text/plain; charset=utf-8');
     $message='VoilaVoila CMS demande PHP 8.3+ et les extensions DOM, mbstring, fileinfo et pdo_sqlite. Consultez INSTALLATION.html.';
@@ -14,6 +14,7 @@ require __DIR__.'/Logger.php';
 require __DIR__.'/Hosting.php';
 require __DIR__.'/Media.php';
 require __DIR__.'/Security.php';
+require __DIR__.'/SecondFactor.php';
 require __DIR__.'/Content.php';
 require __DIR__.'/App.php';
 

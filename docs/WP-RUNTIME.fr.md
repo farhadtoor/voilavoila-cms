@@ -1,39 +1,17 @@
-# WordPress Runtime 0.1 — expérimental et facultatif
+# WordPress Engine 0.2 — thèmes et plugins
 
-Le paquet contient le connecteur, **sans WordPress installé ni activé**. Le CMS personnel reste PHP + SQLite et fonctionne seul. Le moteur facultatif utilise le vrai WordPress, ses thèmes et ses extensions, dans un processus distinct. Il garde ses propres données dans une base MySQL/MariaDB dédiée. Il n’utilise pas la base SQLite native et ne partage pas ses mots de passe.
+Le moteur optionnel exécute **le vrai WordPress**, ses thèmes et ses plugins, dans un processus PHP-FPM séparé. Le petit module CMS garde l’identifiant `wp-runtime` pour mettre à jour 0.1. Le pack hors ligne complet inclut WordPress 7.1.3 et WooCommerce 11.2.1 officiels, leurs sommes de contrôle et licences. Le CMS natif reste PHP + SQLite ; aucun moteur n’est installé ni activé sans votre choix.
 
-La compatibilité dépend du module, des accès réseau, du CSP et des routes nécessaires. Les boutiques, comptes publics, paiements, multisite, tâches externes, import complet de données métier et modules demandant un point d’entrée PHP direct ne sont pas qualifiés. Aucun chiffre de latence ni gain de vitesse n’est garanti. La réécriture de chemins réduit leur exposition ; elle ne rend pas WordPress indétectable et ne corrige pas une extension vulnérable.
+La gestion éditoriale, le propriétaire, les médias natifs et les autres fonctions restent dans le CMS. Les thèmes WordPress lisent une **copie** des pages/articles publiés. Les données métier propres aux plugins, dont les produits, paniers, clients et commandes WooCommerce, restent dans une base WordPress dédiée : ces API et tables sont nécessaires au fonctionnement des modules. Une émulation de quelques fonctions PHP ne suffirait pas.
 
-## Architecture
+## Installation
 
-```mermaid
-flowchart TD
-    V[Visiteur] --> G[Contrôleurs CMS]
-    O[Propriétaire CMS] --> T[Ticket temporaire]
-    T --> G
-    G -->|Fichiers statiques autorisés| A[Ressources opaques]
-    G -->|FastCGI signé| W[WordPress privé]
-    W --> D[Base WordPress dédiée]
-    C[SQLite du CMS] --> G
-```
-
-`wp.php` et `wp-assets.php` sont les seuls contrôleurs supplémentaires. Le CMS ne fait jamais de `require wp-load.php` : seul le worker le fait dans son processus. Le contexte signé expire, ne transmet pas les cookies natifs et ne donne aucun droit CMS au moteur. Le propriétaire obtient un ticket à usage unique valable 60 secondes ; la session du pont expire après 30 minutes et suit l’époque de révocation du compte CMS. WordPress conserve aussi ses propres cookies et ses contrôles de capacités/nonces.
-
-## Installation serveur
-
-1. Validez d’abord une sauvegarde du code et du stockage natif. Gardez WordPress et le stockage CMS dans **deux arbres distincts hors de la racine web**, par exemple `/srv/voilavoila-private/engine` et `/srv/voilavoila-private/native`.
-2. Prévoyez deux origines HTTPS : `https://cms.example.com` et `https://legacy.example.com`. Le moteur ne partage jamais le hostname de l’administration native en production. Deux sous-domaines d’un domaine que vous contrôlez conviennent. Configurez le DNS et les certificats. Les fichiers publics CMS peuvent être servis sur les deux vhosts ; `VV_CANONICAL_ORIGIN` empêche d’y ouvrir l’administration native sur le hostname WordPress.
-3. Créez un compte système `wp-engine` distinct de `cms`, ou un conteneur séparé. Installez PHP-FPM et les modules WordPress, dont `mysqli`, et une base **vide et dédiée** avec un compte SQL limité à cette seule base. WordPress recommande actuellement PHP 8.3+, MariaDB 10.11+ ou MySQL 8.0+, et HTTPS.
-4. Préparez le ZIP officiel et sa vérification, hors du dossier du site :
-
-```sh
-python3 tools/fetch_wordpress_fixture.py --directory /srv/voilavoila-private/official-input
-php -r 'echo bin2hex(random_bytes(32)), PHP_EOL;'
-```
-
-Le script utilise HTTPS, interroge la version actuelle officielle, vérifie chaque fichier par rapport au manifeste officiel et calcule le SHA-256 du ZIP complet. Le bundle privé expire après 24 heures. Si Python n’est pas disponible sur l’hébergement, exécutez-le sur votre poste puis transférez le ZIP et le bundle privé par SFTP. Le bundle doit rester un fichier de confiance de l’opérateur ; il n’est pas une signature de distribution indépendante.
-
-5. Copiez et adaptez [wp-connector.php.example](examples/wp-connector.php.example) **hors webroot** en `wp-connector.php`. C’est du JSON précédé d’une garde PHP, pas un fichier à inclure avec `require`. Remplacez le secret par le résultat de la commande. Réglez `verification_bundle` sur le chemin exact produit ci-dessus. Injectez dans le pool natif et la CLI :
+1. Sauvegardez le code, le stockage natif et, si existant, la base et les fichiers WordPress. La mise à jour native 1.3.1 n’est nécessaire que pour l’intégration OTP ; Engine 0.2 peut fonctionner sur 1.3.0.
+2. Installez le **petit** `VoilaVoila-WP-Engine-0.2.0.zip` dans Extensions. Si le dossier `content/plugins/wp-runtime/` existe déjà, mettez à jour ses fichiers par SFTP, sans supprimer son moteur privé. Le pack hors ligne volumineux n’est pas un ZIP de module natif à envoyer dans ce gestionnaire.
+3. Prévoyez deux origines HTTPS sous votre contrôle : `https://cms.example.com` pour le CMS et `https://legacy.example.com/compat` pour le moteur. Les hostnames de l’administration native et de WordPress doivent être distincts en production. Les cookies CMS ne sont jamais relayés au worker.
+4. Créez deux arbres privés **distincts**, hors webroot : par exemple `/srv/voilavoila-private/native` et `/srv/voilavoila-private/engine`. Créez une base MySQL/MariaDB vide et dédiée, avec un compte SQL limité à cette base. Installez PHP-FPM et les modules WordPress dont `mysqli`. Prévoir au moins 256 Mio pour WordPress/WooCommerce. Les prérequis actuels de WordPress et de chaque module restent applicables.
+5. Depuis le pack lourd, transférez `private-inputs/wordpress-7.1.3.zip` et `private-inputs/wordpress-verification.php` dans un dossier privé de votre serveur. Le module épingle leurs SHA-256 ; ces fichiers précis peuvent être utilisés hors ligne sans la limite de fraîcheur de 24 h des nouveaux téléchargements. Cela vérifie la cohérence avec le paquet préparé, pas l’absence de correctifs WordPress plus récents. Vérifiez les mises à jour de sécurité avant production.
+6. Copiez [wp-connector.php.example](examples/wp-connector.php.example) hors webroot en `wp-connector.php`. C’est du JSON précédé d’une garde PHP, jamais un fichier à inclure avec `require`. Adaptez chemins, URL et socket ; générez un secret avec `php -r 'echo bin2hex(random_bytes(32)), PHP_EOL;'`. Réglez `verification_bundle` sur le fichier privé transféré. Configurez le pool CMS et la CLI :
 
 ```sh
 export VV_STORAGE_PATH=/srv/voilavoila-private/native
@@ -41,61 +19,86 @@ export VV_WP_CONNECTOR=/srv/voilavoila-private/wp-connector.php
 export VV_CANONICAL_ORIGIN=https://cms.example.com
 ```
 
-6. Activez **WordPress Runtime** dans les extensions CMS. Préparez le moteur depuis son panneau avec le ZIP officiel, les identifiants SQL et la confirmation `INSTALL`. Variante CLI : créez un JSON privé contenant `db_host`, `db_name`, `db_user`, `db_password`, puis :
+7. Activez Engine et préparez WordPress depuis le panneau avec le ZIP, les identifiants SQL et `INSTALL`. Variante CLI :
 
 ```sh
-php bin/console.php wp:quarantine:prepare /private/wordpress-VERSION.zip < /private/db-input.json
-php bin/console.php wp:quarantine:status
+php content/plugins/wp-runtime/bin/engine.php prepare /private/wordpress-7.1.3.zip < /private/db-input.json
+php content/plugins/wp-runtime/bin/engine.php status
 ```
 
-Les chemins `/private/...` sont des exemples à remplacer. Ne passez pas le mot de passe SQL dans les arguments ou l’historique shell. Retirez le JSON d’entrée après préparation selon votre politique de conservation. La préparation refuse d’écraser un moteur existant. Le cœur et les secrets restent privés ; aucun téléchargement de WordPress n’est fait lors du fonctionnement natif.
+Le JSON privé contient `db_host`, `db_name`, `db_user`, `db_password`. Ne passez pas de mot de passe dans les arguments shell. La préparation refuse d’écraser un moteur existant. Le CMS ne se connecte pas lui-même à SQL.
 
-7. Configurez le pool séparé à partir de [wp-fpm-pool.conf](examples/wp-fpm-pool.conf). Le code/configuration doit appartenir au déployeur/CMS, être lisible par `wp-engine` et **non modifiable par ce dernier**. Seuls `vv-data/` et `wp-content/uploads/` lui sont accessibles en écriture. Accordez au CMS la lecture des uploads pour le contrôleur statique (groupe/ACL adaptés). Redémarrez le pool après chaque changement de code ou configuration privée.
-8. Installez les réécritures `/compat/` et `/assets/{ui,mod,core,admin,media}/`. Apache : règles fournies dans `.htaccess`, avec réécriture activée et configuration du pool natif. Nginx : adaptez [wp-nginx.conf](examples/wp-nginx.conf) et les interdictions du [vhost natif](nginx.conf). Le socket WordPress n’est jamais accessible depuis le proxy public. Vérifiez par HTTP que stockage, configuration, modèles du worker et fichiers PHP WordPress ne peuvent pas être téléchargés/exécutés directement.
-9. Depuis **Moteur WordPress**, ouvrez l’accès propriétaire. Le premier ticket initialise la base vide. Le panneau WordPress sert à activer les thèmes/extensions. Le diagnostic `health` permet de constater PHP/PID/UID et quelques réglages ; il ne certifie pas l’isolation du système.
+8. Adaptez [wp-fpm-pool.conf](examples/wp-fpm-pool.conf). Le worker doit avoir un UID distinct du CMS ou un conteneur restreint. Le code et la configuration sont lisibles mais non modifiables par ce worker ; seuls `vv-data/` et `wp-content/uploads/` lui sont accessibles en écriture. Accordez au CMS la lecture des uploads par groupe/ACL. Le socket Unix est privé et réservé au CMS.
+9. Ajoutez les réécritures `/compat/` et `/assets/{ui,mod,core,admin,media}/`. Apache : `.htaccess` fourni ; Nginx : [wp-nginx.conf](examples/wp-nginx.conf) et les interdictions du [vhost natif](nginx.conf). Les paramètres `VV_*` doivent également être fournis au handler PHP natif. Aucun vhost public ne doit servir directement le dossier WordPress ou son socket. Vérifiez les interdictions par HTTP.
+10. Ouvrez le ticket propriétaire depuis **Thèmes et plugins WP**. Le premier accès initialise la base dédiée vide. L’administration WordPress présente les thèmes, plugins et écrans métier des plugins ; ses menus éditoriaux/propriétaire ordinaires sont masqués pour garder le CMS comme interface principale.
 
-`open_basedir` et les fonctions désactivées sont des protections complémentaires, **pas une sandbox complète**. Il faut des permissions système distinctes ; une quarantaine stricte demande aussi des montages restreints et un filtrage réseau sortant au niveau système/conteneur. Les constantes WordPress bloquent son API HTTP, pas les sockets ou fonctions réseau qu’un plugin pourrait appeler directement. Ne prétendez pas à cette isolation sur un mutualisé où tous les processus ont le même UID. Si votre hébergement OVH/Infomaniak ne permet pas cette séparation, utilisez le CMS natif et l’import WXR ; le Runtime n’est pas un prérequis.
+Les chemins `/private/...` sont des exemples à remplacer. Les ZIP officiels et les données installées restent hors du dépôt Git.
 
-## Modules et actions publiques
+## Installer les thèmes et plugins
+
+Dans le panneau Engine : choisissez le type de module, son ZIP de confiance et confirmez `INSTALL`, puis activez-le depuis le vrai panneau WordPress. Variante CLI :
 
 ```sh
-php bin/console.php wp:theme:wrap /private/trusted-theme.zip
-php bin/console.php wp:plugin:wrap /private/trusted-plugin.zip
+php content/plugins/wp-runtime/bin/engine.php theme /private/theme.zip
+php content/plugins/wp-runtime/bin/engine.php plugin /private/woocommerce-11.2.1.zip
 ```
 
-Un ZIP doit contenir un seul dossier de module en minuscules. La commande calcule le manifeste SHA-256 dans `vv-manifests/`, sans exécuter le module. Les mises à jour se font par le déployeur, avec sauvegarde et nouveau manifeste ; pas d’éditeur ou de téléchargement de code dans WordPress. Les modules restent du code de confiance.
+Le ZIP doit contenir un seul dossier en minuscules. L’installateur contrôle chemins, liens, doublons, taille et type d’archive, puis enregistre un manifeste SHA-256. La lecture se fait fichier par fichier : WooCommerce n’est plus limité aux 1 200 entrées du prototype. Limites internes : 20 000 entrées, ZIP de 100 Mio, 384 Mio décompressés, 16 Mio par fichier ; le panneau limite son upload à 64 Mio et reste soumis aux limites PHP de l’hébergement. Pas d’écrasement automatique d’un module existant. Déployez les mises à jour avec sauvegarde et intervention du déployeur.
 
-Toutes les actions AJAX et REST publiques sont fermées au départ. Une règle doit exister **à l’identique** dans `policy` du connecteur et dans `policy` du manifeste du plugin installé. Exemple d’une entrée sous `ajax` :
+## Deux profils
 
-```json
-{"my_contact":{"plugin":"my-plugin","methods":["POST"],"fields":{"email":"email","message":"text"}}}
-```
+**Strict**, par défaut : seules les actions publiques AJAX/REST explicitement déclarées et typées dans les manifestes sont relayées, comme en 0.1. Pour les petits modules ayant peu d’actions publiques.
 
-Types : `text` (2 000 octets), `email`, `integer`, `boolean` (`0`/`1`). REST : clé de route exacte, telle que `/my-plugin/v1/contact`, sous `rest`. Pas de joker. Le plugin doit être actif et ses fichiers correspondre au manifeste. Les paramètres de query ET de corps sont contrôlés ; les conflits sont refusés. Les POST publics utilisent uniquement `application/x-www-form-urlencoded`, sans fichier, avec `vv_guest` ou `X-VV-Guest` fourni par le formulaire/script du pont. Le plugin doit conserver ses propres contrôles métier et anti-abus. Les requêtes propriétaires peuvent utiliser les capacités/nonces WordPress et les uploads limités à 8 Mio.
+**Compatibilité WordPress complète**, à activer avec réauthentification : restitue les méthodes REST, corps JSON, AJAX, `admin-post.php`, sessions clients, cookies et en-têtes de panier/nonce requis par des plugins tels que WooCommerce. Les permissions, nonces, signatures et validations métier sont ceux de WordPress et du plugin. Le CMS ne remplace pas ces contrôles par des stubs. L’administration native, les fichiers du cœur, XML-RPC et le cron public restent fermés. La connexion administrative WordPress interactive exige le ticket propriétaire CMS ; les cookies privilégiés périmés ne conservent pas un accès REST administratif après révocation native. Les clients boutique et identifiants API de services ont leur authentification WordPress propre.
 
-Les ressources statiques sont servies par liste d’extensions, vérification des chemins/liens et taille limitée, sans exécution PHP. Les URL opaques n’empêchent pas l’identification du logiciel. Le CSP de compatibilité autorise JavaScript inline et `eval` sur **l’origine WordPress uniquement** ; l’origine CMS garde son CSP strict. Les ressources externes sont bloquées par défaut. Il n’y a pas de cache HTML partagé du moteur dans cette version, afin de ne pas mettre en cache des nonces, formulaires ou sessions.
+Le profil complet expose les fonctionnalités publiques des plugins installés ; il demande des modules fiables et à jour. L’isolation du processus protège le CMS, elle ne corrige pas une vulnérabilité interne à un plugin ou une configuration de paiement.
 
-## Migration progressive et exploitation
+Les cookies relayés sont ramenés à l’hôte WordPress ; les noms réservés au CMS sont refusés. Les statuts HTTP sont conservés, y compris les `201` de création. Les ressources statiques passent par une liste d’extensions, des chemins validés et une limite de 16 Mio, sans exécution PHP. Les requêtes applicatives et uploads relayés sont limités à 8 Mio, les réponses dynamiques à 16 Mio. Les gros médias, téléchargements numériques, routes PHP directes ou extensions nécessitant d’autres protocoles doivent être qualifiés et éventuellement adaptés.
 
-Gardez d’abord WordPress sur son origine dédiée. Sauvegardez **séparément sa base SQL, tous ses fichiers, uploads, configuration et secrets** ; le ZIP de sauvegarde natif n’en contient aucun. Pour un site existant, testez une copie dans une base dédiée : restaurez le SQL et les uploads, conservez le bon préfixe dans `engine-config.php`, liez `owner_login` à votre administrateur WP existant, changez les salts et adaptez les URL sérialisées avec `wp search-replace --dry-run`. Arrêtez le pool avant ces modifications, puis redémarrez-le. N’initialisez pas une base contenant des tables étrangères. Une copie complète avec données de commerce demande sa propre procédure de qualification et de retour arrière.
-
-WP-CLI, si installé par l’opérateur, doit être exécuté **comme utilisateur restreint du moteur**, avec `--path=/private/engine --require=/private/engine/vv-CLI.php`. Les helpers privés fournissent également :
+## Contenus natifs dans les thèmes WP
 
 ```sh
-php /private/engine/vv-Console.php version
-php /private/engine/vv-Console.php upgrade
-php /private/engine/vv-Console.php cron
+php content/plugins/wp-runtime/bin/engine.php sync
 ```
 
-La commande `upgrade` met à jour le schéma de base WordPress ; elle ne télécharge ni ne remplace son cœur. `cron` est à planifier explicitement par l’opérateur. Appliquez les correctifs WordPress par déploiement contrôlé, avec sauvegarde et pool arrêté. La mise à jour du cœur n’est pas automatisée dans 0.1.
+Le bouton **Synchroniser les contenus publiés** fournit la même opération. Elle copie titre, slug, texte HTML, résumé et date dans des posts/pages WP identifiés par l’ID natif. Les liens médias relatifs deviennent des liens vers le CMS. Une seconde synchronisation est idempotente. Les copies d’éléments devenus non publics sont remises en brouillon. Produits, commandes et autres types métier ne sont pas touchés.
 
-Pour passer au natif : exportez WXR depuis WordPress (destination `export` du pont), regroupez les uploads dans un ZIP, puis utilisez Outils → Import WordPress du CMS. Réutilisez **la même URL source** à chaque import pour conserver l’idempotence. Vérifiez pages, articles, commentaires, documents, slug et redirections. Les données propres aux plugins ne deviennent pas automatiquement natives. Basculez l’accueil quand la validation est terminée, puis désactivez le Runtime. Une restauration native remet son activation/home à faux lorsque le plugin est actif. Une panne du connecteur à l’accueil conserve le rendu natif.
+Relancez après publication, ou planifiez cette commande dans le cron de l’hébergeur avec les mêmes variables d’environnement. La copie n’est pas une synchronisation bidirectionnelle : modifier un miroir dans WP ne modifie pas SQLite et sera remplacé à la prochaine synchronisation. Les shortcodes natifs, traductions complexes, révisions, menus personnalisés et métadonnées de constructeurs de pages ne sont pas automatiquement convertis. Conservez leurs pages natives ou préparez une migration dédiée. L’import WXR reste disponible pour basculer progressivement du WordPress d’origine vers le CMS.
 
-## Sources et limites des validations
+## WooCommerce et paiement
 
-- [Prérequis WordPress](https://wordpress.org/about/requirements/).
-- [Sauvegardes WordPress](https://developer.wordpress.org/advanced-administration/security/backup/).
-- [Limites de open_basedir](https://www.php.net/manual/en/ini.core.php#ini.open-basedir).
-- [Recherche/remplacement WP-CLI](https://developer.wordpress.org/cli/commands/search-replace/).
+Le pack fournit le WooCommerce officiel en option ; il n’est pas activé automatiquement. Installez-le, ouvrez son assistant, puis configurez produits, taxes, livraison et paiement dans ses écrans métier. Passez sa visibilité de « Coming soon » à « Live » lorsque vous souhaitez ouvrir la boutique. Vérifiez aussi son réglage d’indexation avant production. Activez le profil complet. Les commandes et stocks demeurent dans SQL côté moteur, pas dans SQLite natif.
 
-Le rapport livré indique les versions et contrôles réellement exécutés. Un test local TCP/UID identique ne valide pas l’isolation par UID, Docker, TLS, ni un hébergement réel. Les débits et temps de réponse fournis dans la proposition initiale ne sont pas repris comme résultats mesurés.
+Le test livré couvre WooCommerce 11.2.1 : activation, produit réel, API Store, refus d’une mutation sans nonce, panier par cookie et Cart-Token, commande avec paiement hors ligne, persistance et diminution du stock. Les e-mails y sont interceptés et aucun paiement réel n’est effectué. Cela ne qualifie pas Stripe, PayPal, SumUp, la fiscalité, les abonnements, la livraison ou tout module tiers associé.
+
+Pour un paiement externe, configurez ses clés et ses webhooks sur l’origine WordPress, testez son mode sandbox et autorisez les services nécessaires :
+
+- `outbound_hosts` dans le fichier privé `engine-config.php` autorise l’API HTTP WordPress ; complétez les règles réseau du système/conteneur.
+- `browser_origins` dans le connecteur autorise des **origines HTTPS exactes** dans le CSP de compatibilité (scripts, connexions et frames).
+- `redirect_origins` autorise des origines HTTPS exactes de redirection, par exemple la page de paiement hébergée réellement utilisée par votre prestataire.
+
+Les listes sont vides par défaut ; pas de joker. Ne copiez pas une liste arbitraire de domaines : utilisez ceux de la documentation de votre intégration. Le CSP assoupli (inline/`eval`) ne s’applique qu’à l’origine WordPress ; le CSP CMS reste strict. Aucun cache HTML partagé du moteur n’est ajouté, afin de conserver les nonces et sessions.
+
+## Mettre à jour un moteur 0.1
+
+Sauvegardez SQL, moteur complet, uploads, configuration et secrets. Arrêtez le pool privé, déployez les nouveaux fichiers du petit module CMS, puis actualisez les modèles du pont :
+
+```sh
+php content/plugins/wp-runtime/bin/engine.php refresh --confirm=REFRESH
+```
+
+Cette commande remplace les fichiers `vv-*` du pont et le modèle `wp-config.php`, en conservant les identifiants/salts stockés dans `engine-config.php`. Elle ne remplace pas le cœur WordPress, les modules ou SQL. Redémarrez le pool. Les constantes de code doivent être relues après les changements privés ; ne vous reposez pas sur un cache OPcache ancien. Le panneau propose la même action avec `REFRESH`.
+
+Les mises à jour du cœur WordPress se font séparément par déploiement contrôlé et sauvegarde : elles ne sont pas automatisées par 0.2. Pour une autre version officielle, utilisez `tools/fetch_wordpress_fixture.py` et son bundle frais (24 h). Les versions épinglées du pack ne signifient pas qu’aucun correctif ultérieur n’existe.
+
+## Exploitation, portabilité et limites
+
+Sauvegardez **séparément** la base SQL, tout le moteur, uploads, configuration et secrets ; le ZIP éditorial natif n’en contient aucun. Pour cloner un WordPress existant, conservez son préfixe, liez l’administrateur à `owner_login`, remplacez les salts et adaptez les URL sérialisées avec `wp search-replace --dry-run`. Arrêtez/redémarrez le pool et testez sur copie. Les données commerce ne sont pas automatiquement converties en données natives.
+
+Les helpers privés `vv-Console.php version`, `upgrade` et `cron` restent disponibles, à exécuter comme utilisateur restreint. `upgrade` met à jour le schéma SQL, pas le code. Programmez cron explicitement.
+
+`open_basedir` et les constantes HTTP WordPress ne sont pas une sandbox complète. Une quarantaine stricte exige des UID/montages restreints et un filtrage réseau système ; du PHP tiers peut utiliser d’autres fonctions réseau. Sur un mutualisé ne permettant pas cette séparation, gardez le CMS natif ou déportez l’infrastructure du moteur. Aucune qualification OVH/Infomaniak, UID/conteneur ou TLS réel n’est revendiquée par les tests locaux en loopback.
+
+Il s’agit d’un moteur de compatibilité expérimental, pas d’une garantie sur l’ensemble des thèmes/plugins WordPress ou d’un gain de vitesse chiffré.
+
+[English](WP-RUNTIME.md) · [WordPress](https://wordpress.org/about/requirements/) · [WooCommerce](https://woocommerce.com/document/server-requirements/) · [Nonces Store API](https://developer.woocommerce.com/docs/apis/store-api/nonce-tokens/) · [Limites PHP](https://www.php.net/manual/en/ini.core.php#ini.open-basedir)
