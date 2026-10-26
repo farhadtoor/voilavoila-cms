@@ -13,3 +13,7 @@ Les dossiers `en` et `fr` contiennent les guides bilingues. Les rapports `verifi
 ## 1.3
 
 [Forms FR](FORMS.fr.md) · [Forms EN](FORMS.md) · [WordPress Runtime FR](WP-RUNTIME.fr.md) · [WordPress Runtime EN](WP-RUNTIME.md) · [Testing](TESTING-1.3.md) · [GitHub FR/EN](../GITHUB-v1.3.0-FR-EN.md).
+
+## 1.3.1
+
+[OTP FR](OTP.fr.md) · [OTP EN](OTP.md) · [Installation FR/EN](../EXTENSIONS-ENGINE-OTP-FR-EN.md).

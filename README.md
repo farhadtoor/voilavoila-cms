@@ -2,9 +2,15 @@
 
 **A small, self-hosted PHP + SQLite CMS for one owner.** Publish a personal profile, pages and posts; manage media; extend it with native themes and plugins.
 
-[Français](README.fr.md) · [Install](docs/en/installation.md) · [Upgrade](UPGRADE-1.3.0.md) · [Contribute](CONTRIBUTING.md) · [Releases](https://github.com/farhadtoor/voilavoila-cms/releases)
+[Français](README.fr.md) · [Install](docs/en/installation.md) · [Upgrade](EXTENSIONS-ENGINE-OTP-FR-EN.md) · [Contribute](CONTRIBUTING.md) · [Releases](https://github.com/farhadtoor/voilavoila-cms/releases)
 
-The current application version is **1.3.0**. The `main` branch also includes the bilingual project documentation and development checks. Historical 1.0.0 and 1.1.0 snapshots remain documented separately.
+The current application version is **1.3.1**. The `main` branch also includes the bilingual project documentation and development checks. Historical 1.0.0 and 1.1.0 snapshots remain documented separately.
+
+## Extensions in 1.3.1
+
+WordPress Engine 0.2: optional genuine themes/plugins engine, WooCommerce compatibility profile and editorial copies. Authenticator OTP 1.0: local QR, TOTP apps and recovery codes, enforced independently of plugin boot/activation.
+
+[Installation FR/EN](EXTENSIONS-ENGINE-OTP-FR-EN.md) · [OTP](docs/OTP.md) · [Engine](docs/WP-RUNTIME.md)
 
 ## New in 1.3.0
 

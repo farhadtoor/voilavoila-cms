@@ -32,3 +32,15 @@ python3 tools/verify_release.py dist/VoilaVoila-CMS-1.3.0.zip
 ```
 
 [Installation FR](docs/fr/installation.md) · [Installation EN](docs/en/installation.md) · [Forms FR](docs/FORMS.fr.md) · [Forms EN](docs/FORMS.md) · [Runtime FR](docs/WP-RUNTIME.fr.md) · [Runtime EN](docs/WP-RUNTIME.md) · [GitHub](GITHUB-v1.3.0-FR-EN.md).
+
+## Extensions 1.3.1 / Engine 0.2
+
+| Command | FR / EN |
+|---|---|
+| `php content/plugins/wp-runtime/bin/engine.php status` | État du moteur / Engine status |
+| `php content/plugins/wp-runtime/bin/engine.php sync` | Copie éditoriale publiée / Published editorial copy |
+| `php content/plugins/wp-runtime/bin/engine.php refresh --confirm=REFRESH` | Mise à jour du pont, pool à redémarrer / Refresh bridge, restart private pool |
+| `php content/plugins/otp/bin/otp.php status` | État du second facteur / Second-factor status |
+| `php content/plugins/otp/bin/otp.php disable --confirm=DISABLE-OTP` | Récupération locale privilégiée / Privileged local recovery |
+
+[OTP FR](docs/OTP.fr.md) · [OTP EN](docs/OTP.md) · [Installation FR/EN](EXTENSIONS-ENGINE-OTP-FR-EN.md).

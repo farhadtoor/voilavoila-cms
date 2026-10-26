@@ -32,3 +32,11 @@ python3 tests/wordpress_runtime.py \
 `VV_WP_BROWSER_REPORT=/absolute/private/report.json` additionally runs the real WordPress Chromium journey when Playwright is installed. `VV_BROWSER_EXECUTABLE` may select an operator-installed Chromium binary.
 
 The final validation report records executed versions and check names. Docker/UID isolation, TLS, actual email delivery, hosted GitHub Actions and OVH/Infomaniak pilots remain separate qualification work. Performance estimates in the original architecture proposal are not measured results.
+
+## Authenticator and WooCommerce additions in 1.3.1
+
+`tests/run.py` includes `tests/otp_131.py`: HTTP enforcement, recovery/backup/key handling and independent RFC 6238 vectors. Browser QR decoding uses the pinned development-only `jsqr` package installed by `npm ci`. Run `python3 tests/browser_otp.py --php php --report test-results/otp-browser.json`.
+
+The real WordPress command also accepts `--woocommerce-zip /private/woocommerce-11.2.1.zip`. It installs official WooCommerce in its disposable engine, creates a synthetic product/cart, places an offline-payment order, verifies stock and intercepts all email. Optional `VV_WP_BROWSER_REPORT=/private/browser.json` runs the browser journey too. No production credential/database/payment is used.
+
+Build separate addons/offline inputs with `tools/build_extensions.py`; see its `--help`. Do not put installed engines or large official inputs in source Git history.

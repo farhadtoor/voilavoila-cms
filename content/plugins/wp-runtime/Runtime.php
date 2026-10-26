@@ -8,7 +8,7 @@ defined('VV_ROOT') || exit;
 final class Runtime {
     private const MAX_ZIP=47185920;
     public static function register(App $app): void {
-        $app->adminPage('wp-runtime',\t('Moteur WordPress','WordPress runtime'),[RuntimeAdmin::class,'render'],[RuntimeAdmin::class,'save']);
+        $app->adminPage('wp-runtime',\t('Thèmes et plugins WP','WP themes and plugins'),[RuntimeAdmin::class,'render'],[RuntimeAdmin::class,'save']);
         \vv_action('backup_restore_data_v1',function($data){if(isset($data['plugin_data']['wp-runtime']))$data['plugin_data']['wp-runtime']=['schema'=>1,'enabled'=>false,'home'=>false];return $data;});
         \vv_action('public_route',function(App $app){
             if(!empty($app->state['plugin_data']['wp-runtime']['home'])&&($_SERVER['REQUEST_METHOD']??'GET')==='GET'&&!$_GET) {
@@ -25,7 +25,7 @@ final class Runtime {
         $parent=realpath(dirname($path));if($parent===false)throw new Failure('Private parent directory is missing.',503);return $parent.'/'.basename($path);
     }
     public static function origin(string $url,bool $allowQuery=false): string {
-        $p=parse_url($url);if(!$p||!in_array($p['scheme']??'',['http','https'],true)||empty($p['host'])||(isset($p['user'])||isset($p['pass']))||(!$allowQuery&&(isset($p['query'])||isset($p['fragment']))))throw new Failure('Invalid connector URL.',503);
+        $p=parse_url($url);if(!filter_var($url,FILTER_VALIDATE_URL)||!$p||!in_array($p['scheme']??'',['http','https'],true)||empty($p['host'])||(isset($p['user'])||isset($p['pass']))||(!$allowQuery&&(isset($p['query'])||isset($p['fragment']))))throw new Failure('Invalid connector URL.',503);
         return strtolower($p['scheme'].'://'.$p['host'].(isset($p['port'])?':'.$p['port']:''));
     }
     private static function loopback(string $origin): bool {return in_array(parse_url($origin,PHP_URL_HOST),['127.0.0.1','localhost','[::1]'],true);}
@@ -48,6 +48,8 @@ final class Runtime {
         elseif(!str_starts_with($cfg['origin'],'https://')||!str_starts_with($cfg['cms_origin'],'https://')||parse_url($cfg['origin'],PHP_URL_HOST)===parse_url($cfg['cms_origin'],PHP_URL_HOST)||!preg_match('~^unix:///[^\x00-\x20]+$~D',$cfg['socket']))throw new Failure('Production requires distinct HTTPS hostnames and a private Unix socket.',503);
         $cfg['cms_path']=$cfg['cms_path']??'';
         if(!is_string($cfg['cms_path'])||($cfg['cms_path']!==''&&(!preg_match('~^/[a-zA-Z0-9/_-]+$~D',$cfg['cms_path'])||str_ends_with($cfg['cms_path'],'/'))))throw new Failure('Invalid native CMS mount.',503);
+        $cfg['compatibility']=($app->state['plugin_data']['wp-runtime']['compatibility']??false)===true;
+        foreach(['browser_origins','redirect_origins'] as $kind){$items=$cfg[$kind]??[];if(!is_array($items)||count($items)>12)throw new Failure('Invalid compatibility origin list.',503);$cfg[$kind]=[];foreach($items as $item){if(!is_string($item)||!str_starts_with($item,'https://')||self::origin($item)!==$item||parse_url($item,PHP_URL_PATH))throw new Failure('Compatibility origins require exact HTTPS origins.',503);$cfg[$kind][]=$item;}}
         $cfg['cms_url']=$cfg['cms_origin'].$cfg['cms_path'];$cfg['policy']=self::policy($cfg['policy']??[]);return $cfg;
     }
     public static function policy(array $policy): array {
@@ -69,8 +71,9 @@ final class Runtime {
         if(is_dir($cfg['engine_root'])&&count(scandir($cfg['engine_root']))>2)throw new Failure('Use an empty engine directory; existing engines are never overwritten.',409);
         $bundlePath=self::absolute($cfg['verification_bundle']??'');
         if(self::beneath($bundlePath,VV_ROOT)||self::beneath($bundlePath,$cfg['engine_root'])||is_link($bundlePath)||!is_file($bundlePath)||filesize($bundlePath)>1048576)throw new Failure('Private WordPress verification bundle required.',503);
+        require_once __DIR__.'/Bundled.php';$pinned=Bundled::verified($zip,$bundlePath);
         $bundle=json_decode($app->store->privateRead($bundlePath),true,16,JSON_THROW_ON_ERROR);
-        if(($bundle['format']??0)!==1||($bundle['verified_at']??0)<time()-86400||($bundle['verified_at']??0)>time()+60||!hash_equals((string)($bundle['zip_sha256']??''),hash_file('sha256',$zip))||!preg_match('/^\d+\.\d+(?:\.\d+)?$/D',$bundle['version']??'')||!is_array($bundle['checksums']??null))throw new Failure('Verification bundle expired or does not match ZIP.',409);
+        if(($bundle['format']??0)!==1||(!$pinned&&($bundle['verified_at']??0)<time()-86400)||($bundle['verified_at']??0)>time()+60||!hash_equals((string)($bundle['zip_sha256']??''),hash_file('sha256',$zip))||!preg_match('/^\d+\.\d+(?:\.\d+)?$/D',$bundle['version']??'')||!is_array($bundle['checksums']??null))throw new Failure('Verification bundle expired or does not match ZIP.',409);
         $z=new \ZipArchive();if($z->open($zip)!==true)throw new Failure('Invalid WordPress ZIP.');
         try{$entries=Tools::zipEntries($z,8000,167772160,16777216);$seen=[];
             $files=[];foreach($entries as $name=>$info){$name=$info['name'];if(str_ends_with($name,'/'))continue;
@@ -88,26 +91,59 @@ final class Runtime {
         try {
             foreach($files as $name=>$bytes){$dest=$stage.'/'.$name;if(!is_dir(dirname($dest)))mkdir(dirname($dest),0750,true);file_put_contents($dest,$bytes);chmod($dest,0640);}
             file_put_contents($stage.'/engine-config.php',"<?php\nreturn ".var_export($engine,true).";\n");chmod($stage.'/engine-config.php',0640);
-            foreach(['Gateway','Bridge','Authorize','Console','CLI'] as $part){$dest=$stage.'/vv-'.$part.'.php';file_put_contents($dest,file_get_contents(__DIR__.'/engine/'.$part.'.template.txt'));chmod($dest,0640);}
+            foreach(['Gateway','Bridge','Authorize','Console','CLI','Sync'] as $part){$dest=$stage.'/vv-'.$part.'.php';file_put_contents($dest,file_get_contents(__DIR__.'/engine/'.$part.'.template.txt'));chmod($dest,0640);}
             file_put_contents($stage.'/wp-config.php',file_get_contents(__DIR__.'/engine/wp-config.template.txt'));chmod($stage.'/wp-config.php',0640);
             mkdir($stage.'/wp-content/mu-plugins',0750,true);file_put_contents($stage.'/wp-content/mu-plugins/voilavoila.php',"<?php\nrequire dirname(__DIR__,2).'/vv-Bridge.php';\n");chmod($stage.'/wp-content/mu-plugins/voilavoila.php',0640);
             foreach(['vv-data','vv-manifests','wp-content/uploads'] as $dir)if(!is_dir($stage.'/'.$dir))mkdir($stage.'/'.$dir,0750,true);
             if(is_dir($cfg['engine_root']))rmdir($cfg['engine_root']);if(!rename($stage,$cfg['engine_root']))throw new Failure('Cannot publish private engine.');
         }catch(\Throwable $error){if(is_dir($stage))Tools::removeTree($stage);throw $error;}
-        $app->store->change(function(&$s)use($bundle){$s['plugin_data']['wp-runtime']=['schema'=>1,'enabled'=>true,'home'=>false,'version'=>$bundle['version']];Store::log($s,'wp_engine_prepared',$bundle['version']);});$app->refresh();return $bundle['version'];
+        $app->store->change(function(&$s)use($bundle){$s['plugin_data']['wp-runtime']=['schema'=>1,'enabled'=>true,'home'=>false,'compatibility'=>false,'version'=>$bundle['version']];Store::log($s,'wp_engine_prepared',$bundle['version']);});$app->refresh();return $bundle['version'];
     }
     public static function wrap(App $app,string $zip,string $kind): string {
-        require_once VV_ROOT.'/core/Tools.php';$cfg=self::config($app);if(!in_array($kind,['plugin','theme'],true)||!is_file($cfg['engine_root'].'/engine-config.php'))throw new Failure('Prepare the private engine first.');
-        if(!is_file($zip)||filesize($zip)>33554432)throw new Failure('Trusted module ZIP limited to 32 MiB.',413);$z=new \ZipArchive();if($z->open($zip)!==true)throw new Failure('Invalid module ZIP.');
-        $files=[];$slug='';try{foreach(Tools::zipEntries($z,1200,67108864) as $name=>$info){$name=$info['name'];if(str_ends_with($name,'/'))continue;$parts=explode('/',$name);if(count($parts)<2||!preg_match('/^[a-z][a-z0-9-]{1,60}$/D',$parts[0])||($slug!==''&&$slug!==$parts[0])||preg_match('~(?:^|/)\.~',$name))throw new Failure('Use one lowercase module folder without hidden files.');$slug=$parts[0];$files[implode('/',array_slice($parts,1))]=$z->getFromName($name);}}finally{$z->close();}
-        $valid=$kind==='theme'?isset($files['style.css'])&&(isset($files['index.php'])||isset($files['templates/index.html'])):false;
-        if($kind==='plugin')foreach($files as $name=>$bytes)if(!str_contains($name,'/')&&str_ends_with($name,'.php')&&preg_match('/Plugin Name\s*:/i',substr($bytes,0,8192)))$valid=true;
-        if(!$valid)throw new Failure('No recognizable WordPress module header/template.');$dest=$cfg['engine_root'].'/wp-content/'.($kind==='theme'?'themes':'plugins').'/'.$slug;if(file_exists($dest))throw new Failure('Module already exists; no overwrite.',409);
-        $stage=dirname($dest).'/.vv-stage-'.bin2hex(random_bytes(6));mkdir($stage,0750);$hashes=[];
-        try{foreach($files as $name=>$bytes){if(!is_string($bytes))throw new Failure('Unreadable module file.');$path=$stage.'/'.$name;if(!is_dir(dirname($path)))mkdir(dirname($path),0750,true);file_put_contents($path,$bytes);chmod($path,0440);$hashes[$name]=hash('sha256',$bytes);}if(!rename($stage,$dest))throw new Failure('Module publication failed.');}catch(\Throwable $e){if(is_dir($stage))Tools::removeTree($stage);throw $e;}
-        ksort($hashes);$manifest=['format'=>1,'kind'=>$kind,'slug'=>$slug,'files'=>$hashes,'policy'=>['ajax'=>(object)[],'rest'=>(object)[]]];
-        file_put_contents($cfg['engine_root'].'/vv-manifests/'.$kind.'-'.$slug.'.json',json_encode($manifest,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR));chmod($cfg['engine_root'].'/vv-manifests/'.$kind.'-'.$slug.'.json',0640);
-        $app->store->audit('wp_module_wrapped',$kind.':'.$slug);return $slug;
+        require_once VV_ROOT.'/core/Tools.php';$cfg=self::config($app);
+        if(!in_array($kind,['plugin','theme'],true)||!is_file($cfg['engine_root'].'/engine-config.php'))throw new Failure('Prepare the private engine first.');
+        if(!is_file($zip)||filesize($zip)>104857600)throw new Failure('Trusted module ZIP limited to 100 MiB.',413);
+        $z=new \ZipArchive();if($z->open($zip)!==true)throw new Failure('Invalid module ZIP.');$stage='';
+        try {
+            $entries=Tools::zipEntries($z,20000,402653184,16777216);$slug='';$files=[];$valid=false;
+            foreach($entries as $info){$name=$info['name'];if(str_ends_with($name,'/'))continue;$parts=explode('/',$name);
+                if(count($parts)<2||!preg_match('/^[a-z][a-z0-9-]{1,60}$/D',$parts[0])||($slug!==''&&$slug!==$parts[0])||preg_match('~(?:^|/)\.~',$name))throw new Failure('Use one lowercase module folder without hidden files.');
+                $slug=$parts[0];$rel=implode('/',array_slice($parts,1));$files[$rel]=$info;
+                if($kind==='plugin'&&!str_contains($rel,'/')&&str_ends_with($rel,'.php')){$header=$z->getFromIndex($info['index'],8192);if(is_string($header)&&preg_match('/Plugin Name\s*:/i',$header))$valid=true;}
+            }
+            if($kind==='theme')$valid=isset($files['style.css'])&&(isset($files['index.php'])||isset($files['templates/index.html']));
+            if(!$valid)throw new Failure('No recognizable WordPress module header/template.');
+            $dest=$cfg['engine_root'].'/wp-content/'.($kind==='theme'?'themes':'plugins').'/'.$slug;
+            if(file_exists($dest)||is_link($dest))throw new Failure('Module already exists; no overwrite.',409);
+            $stage=dirname($dest).'/.vv-stage-'.bin2hex(random_bytes(6));if(!mkdir($stage,0750))throw new Failure('Cannot stage module.');$hashes=[];
+            // Stream one bounded entry at a time; WooCommerce exceeds 1,200 files.
+            foreach($files as $name=>$info){$bytes=$z->getFromIndex($info['index']);if(!is_string($bytes)||strlen($bytes)!==$info['size'])throw new Failure('Unreadable module entry.');$file=$stage.'/'.$name;if(!is_dir(dirname($file)))mkdir(dirname($file),0750,true);if(file_put_contents($file,$bytes)!==strlen($bytes))throw new Failure('Incomplete module write.');chmod($file,0440);$hashes[$name]=hash('sha256',$bytes);unset($bytes);}
+            if(!rename($stage,$dest))throw new Failure('Module publication failed.');$stage='';ksort($hashes);
+            $manifest=['format'=>1,'kind'=>$kind,'slug'=>$slug,'files'=>$hashes,'policy'=>['ajax'=>(object)[],'rest'=>(object)[]]];
+            file_put_contents($cfg['engine_root'].'/vv-manifests/'.$kind.'-'.$slug.'.json',json_encode($manifest,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR));chmod($cfg['engine_root'].'/vv-manifests/'.$kind.'-'.$slug.'.json',0640);
+            $app->store->audit('wp_module_wrapped',$kind.':'.$slug);return $slug;
+        } finally {$z->close();if($stage!==''&&is_dir($stage))Tools::removeTree($stage);}
+    }
+    public static function sync(App $app): array {
+        $cfg=self::config($app);if(!self::enabled($app))throw new Failure('Enable the engine before sync.');$app->refresh();$items=[];
+        foreach($app->state['contents'] as $content){if(!\VV\Content::visible($content))continue;
+            $body=\VV\Content::field($content,'body');$body=preg_replace_callback('~\b(src|href)=("|\x27)(/[^"\x27]*)\2~i',fn($m)=>$m[1].'='.$m[2].$cfg['cms_origin'].$m[3].$m[2],$body);
+            $items[]=['id'=>$content['id'],'type'=>$content['type'],'slug'=>$content['slug'],'title'=>\VV\Content::field($content,'title'),'body'=>$body,'excerpt'=>\VV\Content::field($content,'excerpt'),'published'=>$content['publish_at']];
+        }
+        if(count($items)>1000)throw new Failure('Native snapshot limit: 1000 visible contents.',413);
+        $body=json_encode(['format'=>1,'source'=>$cfg['cms_url'],'site'=>['title'=>$app->state['settings']['title'],'tagline'=>$app->state['settings']['tagline']],'items'=>$items],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+        $ctx=['time'=>time(),'nonce'=>bin2hex(random_bytes(16)),'method'=>'POST','uri'=>'/bridge-sync','owner'=>true,'login'=>false,'operation'=>'sync','public_url'=>$cfg['public_url'],'guest'=>'','body_sha256'=>hash('sha256',$body),'rule'=>null,'compatibility'=>$cfg['compatibility']];
+        $encoded=base64_encode(json_encode($ctx,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR));$u=parse_url($cfg['origin']);
+        $params=['GATEWAY_INTERFACE'=>'CGI/1.1','SERVER_PROTOCOL'=>'HTTP/1.1','REDIRECT_STATUS'=>'200','SCRIPT_FILENAME'=>rtrim($cfg['worker_root'],'/').'/vv-Gateway.php','SCRIPT_NAME'=>'/compat/vv-Gateway.php','DOCUMENT_ROOT'=>$cfg['worker_root'],'REQUEST_METHOD'=>'POST','REQUEST_URI'=>'/compat/bridge-sync','QUERY_STRING'=>'','CONTENT_TYPE'=>'application/json','CONTENT_LENGTH'=>(string)strlen($body),'HTTP_HOST'=>$u['host'].(isset($u['port'])?':'.$u['port']:''),'SERVER_NAME'=>$u['host'],'SERVER_PORT'=>(string)($u['port']??443),'HTTPS'=>$u['scheme']==='https'?'on':'off','REMOTE_ADDR'=>'127.0.0.1','VV_CONTEXT'=>$encoded,'VV_SIGNATURE'=>hash_hmac('sha256',$encoded,$cfg['secret'])];
+        $reply=(new FastCGI())->request($cfg['socket'],$params,$body);$result=json_decode($reply['body'],true,16);
+        if($reply['status']!==200||!is_array($result)||!isset($result['created'],$result['updated'],$result['hidden']))throw new Failure('Native mirror synchronization failed; CMS source retained.',502);
+        $app->store->audit('wp_native_synced',(string)count($items));return $result;
+    }
+    public static function refresh(App $app): void {
+        $cfg=self::config($app);if(!is_file($cfg['engine_root'].'/engine-config.php'))throw new Failure('Existing engine required.');
+        foreach(['Gateway','Bridge','Authorize','Console','CLI','Sync'] as $part){$path=$cfg['engine_root'].'/vv-'.$part.'.php';$tmp=$path.'.'.bin2hex(random_bytes(6)).'.tmp';$bytes=file_get_contents(__DIR__.'/engine/'.$part.'.template.txt');if(file_put_contents($tmp,$bytes)!==strlen($bytes))throw new Failure('Worker template write failed.');chmod($tmp,0640);if(!rename($tmp,$path))throw new Failure('Worker template publication failed.');}
+        $config=$cfg['engine_root'].'/wp-config.php';$bytes=file_get_contents(__DIR__.'/engine/wp-config.template.txt');$tmp=$config.'.'.bin2hex(random_bytes(6)).'.tmp';if(file_put_contents($tmp,$bytes)!==strlen($bytes))throw new Failure('Worker configuration template write failed.');chmod($tmp,0640);if(!rename($tmp,$config))throw new Failure('Worker configuration publication failed.');
+        $app->store->audit('wp_worker_templates_refreshed');
     }
     public static function ticket(App $app,string $target): never {
         Security::requireOwner($app->store);$cfg=self::config($app);if(!self::enabled($app))throw new Failure('Enable the prepared engine first.');
@@ -171,30 +207,32 @@ final class Runtime {
         $login=$path==='/bridge-login';$ticket=$login?self::consume($app,$cfg):[];$owner=$login||self::owner($app);
         if(!empty($app->state['settings']['maintenance'])&&!$owner){header('Retry-After: 3600');throw new Failure('Maintenance.',503);}
         if(preg_match('~^/(?:wp-content/(?:themes|plugins|uploads)/|wp-includes/|wp-admin/(?:css|js|images)/)~',$path)&&!str_ends_with(strtolower($path),'.php')){self::asset($app,$path);}
-        $method=$_SERVER['REQUEST_METHOD']??'GET';if(!in_array($method,['GET','HEAD','POST'],true))throw new Failure('Unsupported bridge method.',405);
+        $method=$_SERVER['REQUEST_METHOD']??'GET';if(!$cfg['compatibility']&&!in_array($method,['GET','HEAD','POST'],true))throw new Failure('Method requires WordPress compatibility mode.',405);if(!in_array($method,['GET','HEAD','POST','PUT','PATCH','DELETE','OPTIONS'],true))throw new Failure('Unsupported bridge method.',405);
         if(preg_match('~(?:^|/)(?:\.|engine-config|vv-(?:Gateway|Bridge|Authorize|Console|CLI)|wp-config|xmlrpc|wp-cron)|^/(?:wp-admin/install\.php|wp-admin/setup-config\.php)~i',$path))throw new Failure('Protected WordPress route.',403);
         $dynamic=$method==='POST'||str_starts_with($path,'/wp-json/')||isset($_GET['rest_route'])||str_starts_with($path,'/wp-admin/')||$path==='/wp-login.php';
         $rule=null;$ctype=$_SERVER['CONTENT_TYPE']??'';
-        if(!$owner&&$dynamic){if($_FILES||($method==='POST'&&!str_starts_with($ctype,'application/x-www-form-urlencoded')))throw new Failure('Public bridge accepts only declared URL-encoded requests.',403);$rule=self::publicRule($cfg,$path,$method,$_GET,$_POST);if($method==='POST')Security::guestPost($app->store,'wp-bridge',\val($_POST,'vv_guest',$_SERVER['HTTP_X_VV_GUEST']??''));}
+        if(!$owner&&$dynamic&&!$cfg['compatibility']){if($_FILES||($method==='POST'&&!str_starts_with($ctype,'application/x-www-form-urlencoded')))throw new Failure('Public bridge accepts only declared URL-encoded requests.',403);$rule=self::publicRule($cfg,$path,$method,$_GET,$_POST);if($method==='POST')Security::guestPost($app->store,'wp-bridge',\val($_POST,'vv_guest',$_SERVER['HTTP_X_VV_GUEST']??''));}
+        if(!$owner&&($path==='/wp-login.php'||str_starts_with($path,'/wp-admin/')&&!in_array($path,$cfg['compatibility']?['/wp-admin/admin-ajax.php','/wp-admin/admin-post.php']:['/wp-admin/admin-ajax.php'],true)))throw new Failure('Owner handoff required.',403);
         if(!$owner)$app->store->rate('wp-public',$_SERVER['REMOTE_ADDR']??'',120,60);
         $guest=Security::guestToken($app->store,'wp-bridge');$body=$login?'':file_get_contents('php://input');if(!is_string($body))$body='';if(strlen($body)>8388608)throw new Failure('Bridge body exceeds 8 MiB.',413);
         if(!$login&&$method==='POST'&&str_starts_with($ctype,'multipart/form-data'))[$body,$ctype]=self::multipart();
-        $context=['time'=>time(),'nonce'=>bin2hex(random_bytes(16)),'method'=>$login?'GET':$method,'uri'=>$login?'/':$path.(($_SERVER['QUERY_STRING']??'')!==''?'?'.$_SERVER['QUERY_STRING']:''),'owner'=>$owner,'login'=>$login,'target'=>$ticket['target']??'','email'=>$ticket['email']??'','title'=>$ticket['title']??'','public_url'=>$cfg['public_url'],'guest'=>$guest,'body_sha256'=>hash('sha256',$body),'rule'=>$rule];
+        $context=['time'=>time(),'nonce'=>bin2hex(random_bytes(16)),'method'=>$login?'GET':$method,'uri'=>$login?'/':$path.(($_SERVER['QUERY_STRING']??'')!==''?'?'.$_SERVER['QUERY_STRING']:''),'owner'=>$owner,'login'=>$login,'target'=>$ticket['target']??'','email'=>$ticket['email']??'','title'=>$ticket['title']??'','public_url'=>$cfg['public_url'],'guest'=>$guest,'body_sha256'=>hash('sha256',$body),'rule'=>$rule,'compatibility'=>$cfg['compatibility']];
         $encoded=base64_encode(json_encode($context,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR));$u=parse_url($cfg['origin']);
         $params=['GATEWAY_INTERFACE'=>'CGI/1.1','SERVER_PROTOCOL'=>'HTTP/1.1','SERVER_SOFTWARE'=>'VoilaVoila','REDIRECT_STATUS'=>'200','SCRIPT_FILENAME'=>rtrim($cfg['worker_root'],'/').'/vv-Gateway.php','SCRIPT_NAME'=>'/compat/vv-Gateway.php','DOCUMENT_ROOT'=>$cfg['worker_root'],'REQUEST_METHOD'=>$context['method'],'REQUEST_URI'=>'/compat'.$context['uri'],'QUERY_STRING'=>$login?'':($_SERVER['QUERY_STRING']??''),'CONTENT_TYPE'=>$ctype,'CONTENT_LENGTH'=>(string)strlen($body),'SERVER_NAME'=>$u['host'],'SERVER_PORT'=>(string)($u['port']??($u['scheme']==='https'?443:80)),'HTTP_HOST'=>parse_url($cfg['origin'],PHP_URL_HOST).(isset($u['port'])?':'.$u['port']:''),'HTTPS'=>$u['scheme']==='https'?'on':'off','REMOTE_ADDR'=>$_SERVER['REMOTE_ADDR']??'127.0.0.1','VV_CONTEXT'=>$encoded,'VV_SIGNATURE'=>hash_hmac('sha256',$encoded,$cfg['secret'])];
         $cookies=[];foreach($_COOKIE as $name=>$value)if(is_string($name)&&is_string($value)&&preg_match('/^[A-Za-z0-9_-]{1,120}$/D',$name)&&!preg_match('/^(?:__Secure-)?(?:vvcms|vvwp-owner|vvguest-)/',$name)&&strlen($value)<=4096&&!preg_match('/[\x00-\x20\x7f;]/',$value))$cookies[]=$name.'='.$value;
         $params['HTTP_COOKIE']=implode('; ',array_slice($cookies,0,50));
-        foreach(['HTTP_USER_AGENT','HTTP_ACCEPT','HTTP_ACCEPT_LANGUAGE','HTTP_ORIGIN','HTTP_REFERER','HTTP_X_WP_NONCE','HTTP_X_REQUESTED_WITH'] as $key)if(is_string($_SERVER[$key]??null)&&strlen($_SERVER[$key])<=4096&&!preg_match('/[\x00-\x1f\x7f]/',$_SERVER[$key]))$params[$key]=$_SERVER[$key];
-        $response=(new FastCGI())->request($cfg['socket'],$params,$body);self::compatHeaders();http_response_code($response['status']);
+        foreach(['HTTP_USER_AGENT','HTTP_ACCEPT','HTTP_ACCEPT_LANGUAGE','HTTP_ORIGIN','HTTP_REFERER','HTTP_X_WP_NONCE','HTTP_X_REQUESTED_WITH','HTTP_NONCE','HTTP_CART_TOKEN','HTTP_AUTHORIZATION','HTTP_STRIPE_SIGNATURE','HTTP_PAYPAL_TRANSMISSION_ID','HTTP_PAYPAL_TRANSMISSION_TIME','HTTP_PAYPAL_TRANSMISSION_SIG','HTTP_PAYPAL_CERT_URL','HTTP_PAYPAL_AUTH_ALGO'] as $key)if(is_string($_SERVER[$key]??null)&&strlen($_SERVER[$key])<=4096&&!preg_match('/[\x00-\x1f\x7f]/',$_SERVER[$key]))$params[$key]=$_SERVER[$key];
+        $response=(new FastCGI())->request($cfg['socket'],$params,$body);self::compatHeaders($cfg);http_response_code($response['status']);
         foreach($response['headers'] as [$name,$value]) {
-            if($name==='set-cookie'){if(preg_match('/^(?:__Secure-)?(?:vvcms|vvwp-owner|vvguest-)/i',$value)||preg_match('/;\s*domain\s*=/i',$value))continue;header('Set-Cookie: '.$value,false);}
-            elseif($name==='location'){if(str_starts_with($value,'/compat/'))$value=$cfg['origin'].$value;if(self::origin($value,true)!==$cfg['origin']||!str_starts_with($value,$cfg['public_url'].'/'))throw new Failure('External WordPress redirect refused.',502);header('Location: '.$value,true,$response['status']);}
-            elseif(in_array($name,['content-type','content-disposition','retry-after','allow','x-robots-tag','x-wp-total','x-wp-totalpages','x-wp-nonce'],true))header($name.': '.$value);
+            if($name==='set-cookie'){if(preg_match('/^(?:__Secure-)?(?:vvcms|vvwp-owner|vvguest-)/i',$value))continue;$value=preg_replace('/;\s*domain\s*=\s*(?:"[^"]*"|[^;]*)/i','',$value);header('Set-Cookie: '.$value,false);}
+            elseif($name==='location'){if(str_starts_with($value,'/compat/'))$value=$cfg['origin'].$value;if(!(self::origin($value,true)===$cfg['origin']&&str_starts_with($value,$cfg['public_url'].'/'))&&!in_array(self::origin($value,true),$cfg['redirect_origins'],true))throw new Failure('External WordPress redirect refused.',502);header('Location: '.$value,true,$response['status']);}
+            elseif(in_array($name,['content-type','content-disposition','retry-after','allow','x-robots-tag','x-wp-total','x-wp-totalpages','x-wp-nonce','nonce','nonce-timestamp','nonce-user-id','cart-token','link'],true))header($name.': '.$value);
         }
         http_response_code($response['status']);if($method!=='HEAD')echo $response['body'];exit;
     }
-    private static function compatHeaders(): void {
-        header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-src 'self' blob:; frame-ancestors 'self'; form-action 'self'; base-uri 'self'; object-src 'none'");header('X-Frame-Options: SAMEORIGIN');header('Cache-Control: private, no-store');header('X-Content-Type-Options: nosniff');header('Referrer-Policy: same-origin');
+    private static function compatHeaders(array $cfg): void {
+        $extra=implode(' ',$cfg['browser_origins']);$cms=$cfg['cms_origin'];
+        header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: $extra; style-src 'self' 'unsafe-inline' $extra; img-src 'self' data: blob: $cms $extra; font-src 'self' data: $extra; connect-src 'self' $extra; worker-src 'self' blob:; frame-src 'self' blob: $extra; frame-ancestors 'self'; form-action 'self' $extra; base-uri 'self'; object-src 'none'");header('X-Frame-Options: SAMEORIGIN');header('Cache-Control: private, no-store');header('X-Content-Type-Options: nosniff');header('Referrer-Policy: same-origin');
     }
     public static function asset(App $app,?string $traditional=null): never {
         $cfg=self::config($app);self::host($cfg);if(!self::enabled($app))throw new Failure('WordPress assets disabled.',404);$owner=self::owner($app);if(!empty($app->state['settings']['maintenance'])&&!$owner)throw new Failure('Maintenance.',503);
@@ -205,7 +243,7 @@ final class Runtime {
         elseif(str_starts_with($path,'/assets/media/'))$relative='wp-content/uploads/'.substr($path,14);
         elseif(str_starts_with($path,'/assets/admin/'))$relative='wp-admin/'.substr($path,14);
         Security::quarantinePath('/'.$relative);if($relative===''||!preg_match('~^(?:wp-content/(?:themes|plugins|uploads)/|wp-includes/|wp-admin/(?:css|js|images)/)~',$relative)||str_starts_with($relative,'wp-admin/')&&!$owner)throw new Failure('Asset unavailable.',404);
-        $mime=['css'=>'text/css; charset=utf-8','js'=>'application/javascript; charset=utf-8','mjs'=>'application/javascript; charset=utf-8','wasm'=>'application/wasm','png'=>'image/png','jpg'=>'image/jpeg','jpeg'=>'image/jpeg','webp'=>'image/webp','gif'=>'image/gif','ico'=>'image/x-icon','svg'=>'image/svg+xml','woff'=>'font/woff','woff2'=>'font/woff2','ttf'=>'font/ttf','otf'=>'font/otf','pdf'=>'application/pdf','docx'=>'application/vnd.openxmlformats-officedocument.wordprocessingml.document','zip'=>'application/zip','csv'=>'text/csv; charset=utf-8'];$ext=strtolower(pathinfo($relative,PATHINFO_EXTENSION));
+        $mime=['css'=>'text/css; charset=utf-8','js'=>'application/javascript; charset=utf-8','mjs'=>'application/javascript; charset=utf-8','wasm'=>'application/wasm','png'=>'image/png','jpg'=>'image/jpeg','jpeg'=>'image/jpeg','webp'=>'image/webp','avif'=>'image/avif','gif'=>'image/gif','ico'=>'image/x-icon','svg'=>'image/svg+xml','woff'=>'font/woff','woff2'=>'font/woff2','ttf'=>'font/ttf','otf'=>'font/otf','pdf'=>'application/pdf','docx'=>'application/vnd.openxmlformats-officedocument.wordprocessingml.document','zip'=>'application/zip','csv'=>'text/csv; charset=utf-8'];$ext=strtolower(pathinfo($relative,PATHINFO_EXTENSION));
         if(!isset($mime[$ext]))throw new Failure('Static extension refused.',404);$root=$cfg['engine_root'];$file=$root;foreach(explode('/',$relative) as $part){$file.='/'.$part;if(is_link($file))throw new Failure('Linked asset refused.',404);}
         $real=realpath($file);if(!$real||!self::beneath($real,$root)||!is_file($real)||filesize($real)>16777216)throw new Failure('Asset unavailable.',404);
         if(!in_array($_SERVER['REQUEST_METHOD']??'GET',['GET','HEAD'],true))throw new Failure('Asset method refused.',405);

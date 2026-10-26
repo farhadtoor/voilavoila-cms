@@ -181,6 +181,7 @@ final class Security {
             || ($a['born'] ?? 0) < time()-43200 || ($a['ua'] ?? '') !== hash('sha256', $_SERVER['HTTP_USER_AGENT'] ?? '')) {
             unset($_SESSION['auth']); return false;
         }
+        if(!SecondFactor::session($s,$a)) { unset($_SESSION['auth']); return false; }
         $_SESSION['auth']['last'] = time(); return true;
     }
     public static function requireOwner(Store $store): void {
@@ -196,11 +197,13 @@ final class Security {
         $store->audit('login_success');
     }
     /** Call only after independently verifying the owner password or recovery secret. */
-    public static function establish(Store $store): void {
+    public static function establish(Store $store,bool $factorVerified=false): void {
+        if(!$factorVerified) SecondFactor::start($store);
         $s=$store->read();
         session_regenerate_id(true);
         $_SESSION['csrf'] = bin2hex(random_bytes(32));
         $_SESSION['auth'] = ['epoch'=>$s['owner']['epoch'], 'born'=>time(),'last'=>time(),'ua'=>hash('sha256',$_SERVER['HTTP_USER_AGENT'] ?? '')];
+        if(isset($s['owner']['factor']['id'])) $_SESSION['auth']['factor_id']=$s['owner']['factor']['id'];
     }
     public static function reauth(Store $store, string $password): void {
         $store->rate('reauth',$_SERVER['REMOTE_ADDR'] ?? 'cli',10,900);

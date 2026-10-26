@@ -1,5 +1,9 @@
 # Roadmap / Feuille de route
 
+## 1.3.1 — optional Engine and OTP
+
+WordPress themes/plugins execution with WooCommerce integration evidence, native editorial copies, and TOTP authentication with local QR/recovery codes. Hosting, payment gateways and full commerce migrations still need site-specific qualification. / Moteur WordPress facultatif et authentification TOTP, avec qualification hébergeur/paiement à effectuer par site.
+
 ## 1.3.0 — Forms and optional WordPress Runtime
 
 [Milestone 3 / Jalon 3](docs/MILESTONE-3-FR-EN.md). Native Forms delivered; Runtime 0.1 remains experimental and optional. Hosting/isolation/email qualification remains pending. / Forms natif livré ; Runtime 0.1 facultatif et expérimental, pilotes à qualifier.

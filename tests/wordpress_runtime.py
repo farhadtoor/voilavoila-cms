@@ -19,7 +19,7 @@ def ready(url,process):
 def main():
  p=argparse.ArgumentParser(description=__doc__)
  for k in ['php','fpm','mariadb_root','wordpress_zip','verification_bundle','report']:p.add_argument('--'+k.replace('_','-'),required=True,type=Path)
- p.add_argument('--keep',type=Path);a=p.parse_args();checks=[];services=[];logs=[]
+ p.add_argument('--woocommerce-zip',type=Path);p.add_argument('--keep',type=Path);a=p.parse_args();checks=[];services=[];logs=[]
  def ck(n,v):
   if not v:raise AssertionError(n)
   checks.append(n);print('PASS',n,flush=True)
@@ -90,7 +90,7 @@ def main():
   home=guest.get(legacy+'/compat/');css=re.search(r'href=[\x22\x27]([^\x22\x27]+/assets/ui/[^\x22\x27]+)',home.text)
   ck('genuine classic theme renders with opaque working CSS','Genuine classic template' in home.text and bool(css) and guest.get(css.group(1)).status_code==200)
   # Trusted representative WP module; fixture handles one public GET/POST action.
-  plugin="""<?php\n/* Plugin Name: VV Runtime Probe */\nadd_action('wp_footer',function(){echo '<p id="probe-rendered">Real plugin</p><form method="post" action="'.esc_url(admin_url('admin-ajax.php')).'"><input name="action" value="vv_probe"><input name="value" value="hello"><button>Probe</button></form>';});\nfunction vv_probe(){wp_send_json(['value'=>sanitize_text_field($_REQUEST['value']??''),'cms_cookie'=>isset($_COOKIE['vvcms'])]);}add_action('wp_ajax_nopriv_vv_probe','vv_probe');add_action('wp_ajax_vv_probe','vv_probe');"""
+  plugin="""<?php\n/* Plugin Name: VV Runtime Probe */\nadd_action('wp_footer',function(){echo '<p id="probe-rendered">Real plugin</p><form method="post" action="'.esc_url(admin_url('admin-ajax.php')).'"><input name="action" value="vv_probe"><input name="value" value="hello"><button>Probe</button></form>';});\nfunction vv_probe(){wp_send_json(['value'=>sanitize_text_field($_REQUEST['value']??''),'cms_cookie'=>isset($_COOKIE['vvcms'])]);}add_action('wp_ajax_nopriv_vv_probe','vv_probe');add_action('wp_ajax_vv_probe','vv_probe');add_action('admin_post_nopriv_vv_probe','vv_probe');add_action('admin_post_vv_probe','vv_probe');"""
   module=work/'probe.zip'
   with zipfile.ZipFile(module,'w',zipfile.ZIP_DEFLATED) as z:z.writestr('vv-probe/probe.php',plugin)
   r=subprocess.run([a.php,work/'app/bin/console.php','wp:plugin:wrap',module],env=env,capture_output=True);ck('trusted plugin wrapped with SHA manifest',r.returncode==0 and (engine/'vv-manifests/plugin-vv-probe.json').is_file())
@@ -111,12 +111,69 @@ def main():
     ck('native maintenance also gates WordPress visitors',guest.get(legacy+'/compat/').status_code==503)
     ck('owner can retain WordPress access in maintenance',owner.get(legacy+'/compat/wp-admin/').status_code==200)
   version=subprocess.check_output([a.php,engine/'vv-Console.php','version'],env=env,text=True).strip();ck('private offline version helper works',version==health['wordpress'])
+  if a.woocommerce_zip:
+   # The fixture disables all mail; no real charge or external message is made.
+   (engine/'wp-content/mu-plugins/test-no-mail.php').write_text("<?php add_filter('pre_wp_mail','__return_true');")
+   before_native=__import__('run').read_state(storage)
+   wrapped=subprocess.run([a.php,work/'app/content/plugins/wp-runtime/bin/engine.php','plugin',a.woocommerce_zip],env=env,capture_output=True)
+   if wrapped.returncode:print('WOO WRAP',wrapped.stderr.decode(),flush=True)
+   ck('real WooCommerce ZIP wraps without the former 1200-file ceiling',wrapped.returncode==0 and (engine/'wp-content/plugins/woocommerce/woocommerce.php').is_file())
+   def wp_cli(code):
+    script='require '+json.dumps(str(engine/'vv-CLI.php'))+';require '+json.dumps(str(engine/'wp-load.php'))+';'+code
+    result=subprocess.run([a.php,'-r',script],env=env,capture_output=True,text=True)
+    if result.returncode:raise RuntimeError('WP CLI: '+result.stderr[-3000:]+result.stdout[-1000:])
+    return result.stdout
+   active=wp_cli('require_once ABSPATH."wp-admin/includes/plugin.php";$r=activate_plugin("woocommerce/woocommerce.php");if(is_wp_error($r))throw new Exception($r->get_error_message());echo "activated";')
+   ck('genuine WooCommerce activates in private WordPress','activated' in active)
+   data=json.loads(wp_cli('WC_Install::install();WC_Install::create_pages();update_option("woocommerce_onboarding_profile",["completed"=>true,"skipped"=>true]);delete_transient("_wc_activation_redirect");update_option("woocommerce_coming_soon","no");update_option("woocommerce_store_pages_only","no");update_option("woocommerce_currency","EUR");update_option("woocommerce_default_country","FR");update_option("woocommerce_calc_taxes","no");update_option("woocommerce_cod_settings",["enabled"=>"yes","title"=>"Cash on delivery test","enable_for_virtual"=>"yes"]);$p=new WC_Product_Simple();$p->set_name("VV compatibility product");$p->set_regular_price("19.90");$p->set_virtual(true);$p->set_manage_stock(true);$p->set_stock_quantity(10);$p->set_status("publish");$id=$p->save();echo json_encode(["product"=>$id,"version"=>WC_VERSION,"cart_page"=>wc_get_page_id("cart"),"checkout_page"=>wc_get_page_id("checkout")]);'))
+   ck('real product and WooCommerce internal pages created',data['product']>0 and data['cart_page']>0 and data['checkout_page']>0)
+   # This is explicit owner opt-in, keeping the original strict profile available.
+   settings=post({'op':'settings','enabled':'on','compatibility':'on'});ck('owner enables full WordPress plugin compatibility',settings.status_code==303)
+   sync=subprocess.run([a.php,work/'app/content/plugins/wp-runtime/bin/engine.php','sync'],env=env,capture_output=True,text=True)
+   if sync.returncode:raise RuntimeError('SYNC '+sync.stderr+sync.stdout)
+   sync_result=json.loads(sync.stdout);ck('native public pages and articles synchronize to WordPress',sync_result['created']==len(before_native['contents']))
+   again=json.loads(subprocess.check_output([a.php,work/'app/content/plugins/wp-runtime/bin/engine.php','sync'],env=env,text=True));ck('editorial mirror is idempotent',again['created']==0 and again['updated']==0 and again['hidden']==0)
+   admin_post=guest.post(legacy+'/compat/wp-admin/admin-post.php',data={'action':'vv_probe','value':'compat form'});ck('real public admin-post plugin form works in compatibility mode',admin_post.status_code==200 and json.loads(admin_post.text)['value']=='compat form')
+   # Raw JSON preserves Store API nonces, cart tokens and method semantics.
+   def api(client,path,method='GET',payload=None,headers=None):
+    request=urllib.request.Request(legacy+'/compat'+path,data=json.dumps(payload).encode() if payload is not None else None,method=method,headers={'Content-Type':'application/json',**(headers or {})})
+    opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(client.cookies))
+    try:response=opener.open(request,timeout=30)
+    except urllib.error.HTTPError as error:response=error
+    with response:
+     text=response.read().decode();
+     try:parsed=json.loads(text)
+     except ValueError:raise RuntimeError('API '+str(response.code)+' '+text[:2000])
+     return response.code,parsed,response.headers
+   shopper=Session();status,products,_=api(shopper,'/wp-json/wc/store/v1/products');ck('WooCommerce Store API lists real product',status==200 and any(p['id']==data['product'] for p in products))
+   status,cart,headers=api(shopper,'/wp-json/wc/store/v1/cart');nonce=headers.get('Nonce');cart_token=headers.get('Cart-Token');ck('Store API Nonce and Cart-Token headers survive the bridge',status==200 and bool(nonce) and bool(cart_token))
+   denied,body,_=api(Session(),'/wp-json/wc/store/v1/cart/add-item','POST',{'id':data['product'],'quantity':1});ck('WooCommerce still rejects a cart mutation without its nonce',denied in [401,403] and isinstance(body,dict) and 'nonce' in body.get('code',''))
+   status,cart,headers=api(shopper,'/wp-json/wc/store/v1/cart/add-item','POST',{'id':data['product'],'quantity':2},{'Nonce':nonce});ck('real cart add-item works through WordPress engine',status==201 and len(cart['items'])==1 and cart['items'][0]['quantity']==2 and cart['totals']['total_price']=='3980')
+   cart_token=headers.get('Cart-Token') or cart_token
+   status,token_cart,_=api(Session(),'/wp-json/wc/store/v1/cart',headers={'Cart-Token':cart_token});ck('Cart-Token resumes the same anonymous basket',status==200 and token_cart['items'][0]['quantity']==2)
+   status,cookie_cart,_=api(shopper,'/wp-json/wc/store/v1/cart');ck('WooCommerce anonymous cart persists through its own cookies',status==200 and cookie_cart['items'][0]['quantity']==2)
+   nonce=headers.get('Nonce') or nonce
+   checkout={'billing_address':{'first_name':'Synthetic','last_name':'Fixture','company':'','address_1':'1 Test Street','address_2':'','city':'Paris','state':'','postcode':'75001','country':'FR','email':'buyer@example.test','phone':'0600000000'},'shipping_address':{'first_name':'Synthetic','last_name':'Fixture','address_1':'1 Test Street','city':'Paris','postcode':'75001','country':'FR'},'payment_method':'cod','payment_data':[],'customer_note':'Synthetic integration test. No payment or email.'}
+   status,order,_=api(shopper,'/wp-json/wc/store/v1/checkout','POST',checkout,{'Nonce':nonce})
+   if status!=200:print('CHECKOUT',status,order,flush=True)
+   ck('WooCommerce creates a real order using offline cash-on-delivery',status==200 and order.get('order_id',0)>0)
+   order_proof=json.loads(wp_cli('$o=wc_get_order('+str(order.get('order_id',0))+');echo json_encode(["status"=>$o->get_status(),"total"=>$o->get_total(),"items"=>count($o->get_items()),"stock"=>wc_get_product('+str(data['product'])+')->get_stock_quantity()]);'))
+   ck('order persists and inventory is reduced in the engine database',order_proof['status'] in ['processing','on-hold','completed'] and order_proof['total']=='39.80' and order_proof['items']==1 and order_proof['stock']==8)
+   after_native=__import__('run').read_state(storage);ck('WooCommerce leaves native content media and owner unchanged',all(before_native[k]==after_native[k] for k in ['contents','media','owner']))
+   ck('public WordPress admin and login remain gated in compatibility mode',guest.get(legacy+'/compat/wp-admin/').status_code==403 and guest.get(legacy+'/compat/wp-login.php').status_code==403)
+   admin_nonce=owner.get(legacy+'/compat/wp-admin/admin-ajax.php?action=rest-nonce').text.strip()
+   privileged=owner.get(legacy+'/compat/wp-json/wp/v2/users?context=edit',headers={'X-WP-Nonce':admin_nonce});ck('valid native handoff permits privileged WP REST',privileged.status_code==200)
+   subprocess.run([a.php,'-r','require '+json.dumps(str(work/'app/core/bootstrap.php'))+';$vv->store->change(function(&$s){$s["owner"]["epoch"]=bin2hex(random_bytes(16));});'],env=env,check=True)
+   revoked=owner.get(legacy+'/compat/wp-json/wp/v2/users?context=edit',headers={'X-WP-Nonce':admin_nonce});ck('stale WordPress owner cookies cannot bypass native revocation',revoked.status_code in [401,403])
+   # Final default profile is explicit in the resulting report, not a universal compatibility claim.
+   woo_report={'version':data['version'],'product_and_cart':'passed','offline_order_and_stock':'passed','real_payment_tested':False,'real_email_sent':False,'product_zip_sha256':__import__('hashlib').sha256(a.woocommerce_zip.read_bytes()).hexdigest()}
   if os.getenv('VV_WP_BROWSER_REPORT'):
-   subprocess.run(['node',str(SOURCE/'tests/browser_wp_runtime.cjs')],env={**env,'VV_WP_NATIVE':native,'VV_WP_LEGACY':legacy},check=True,timeout=180)
+   subprocess.run(['node',str(SOURCE/'tests/browser_wp_runtime.cjs')],env={**env,'VV_WP_NATIVE':native,'VV_WP_LEGACY':legacy,**({'VV_WOO_PRODUCT_ID':str(data['product']),'VV_WOO_CART_PAGE':str(data['cart_page'])} if a.woocommerce_zip else {})},check=True,timeout=180)
   # Invalidate native epoch and prove owner bridge revocation.
   subprocess.run([a.php,'-r','require '+json.dumps(str(work/'app/core/bootstrap.php'))+';$vv->store->change(function(&$s){$s["owner"]["epoch"]=bin2hex(random_bytes(16));});'],env=env,check=True)
   ck('CMS owner epoch revokes bridge sessions',owner.get(legacy+'/compat/wp-admin/').status_code==403)
   report={'suite':'real WordPress runtime','checks':len(checks),'passed':checks,'wordpress':health['wordpress'],'php':health['php'],'wordpress_zip_sha256':__import__('hashlib').sha256(a.wordpress_zip.read_bytes()).hexdigest(),'os_uid_isolation_tested':False,'transport':'explicit loopback development; same UID','limitations':['No hosted-provider, TLS or container/UID isolation certification.']}
+  if a.woocommerce_zip:report['woocommerce']=woo_report
   a.report.parent.mkdir(parents=True,exist_ok=True);a.report.write_text(json.dumps(report,indent=2)+'\n');print('PASS',len(checks),'real WordPress checks')
  except Exception:
   print('WORK',work,flush=True)

@@ -160,8 +160,9 @@ def main():
                         '--report', str(work / 'maintenance-results.json')], env=env, check=True)
         subprocess.run([sys.executable, str(SOURCE / 'tests/release_130.py'), '--php', php, '--report', str(work / 'release-130-results.json')], env=env, check=True)
         subprocess.run([sys.executable, str(SOURCE / 'tests/fastcgi_130.py'), '--php', php, '--report', str(work / 'fastcgi-130-results.json')], env=env, check=True)
+        subprocess.run([sys.executable, str(SOURCE / 'tests/otp_131.py'), '--php', php, '--report', str(work / 'otp-131-results.json')], env=env, check=True)
         reports = [json.loads((work / name).read_text(encoding='utf-8')) for name in
-                   ['integration-results.json', 'features-results.json', 'migration-failure-results.json', 'release-120-results.json', 'maintenance-results.json', 'release-130-results.json', 'fastcgi-130-results.json']]
+                   ['integration-results.json', 'features-results.json', 'migration-failure-results.json', 'release-120-results.json', 'maintenance-results.json', 'release-130-results.json', 'fastcgi-130-results.json', 'otp-131-results.json']]
         summary = {'runtime': 'PHP ' + version, 'checks': sum(r['checks'] for r in reports),
                    'suites': reports, 'storage': 'Temporary synthetic data; removed after run'}
         if args.report:

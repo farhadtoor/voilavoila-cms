@@ -5,6 +5,7 @@ use VV\Security; use VV\Failure; use VV\Store;
 if(!$vv->state['installed']) redirect(url('install.php'));
 if(!Security::tls() && !Security::local()) fail_page('La connexion nécessite HTTPS.',403);
 if(Security::owner($vv->store)) redirect(admin_url());
+\VV\SecondFactor::login($vv);
 $error=''; $recover=val($_GET,'mode')==='recovery';
 if(($_SERVER['REQUEST_METHOD'] ?? '')==='POST') {
     try {
@@ -20,7 +21,7 @@ if(($_SERVER['REQUEST_METHOD'] ?? '')==='POST') {
                 $s['owner']['hash']=Security::hash($password); $s['owner']['epoch']=bin2hex(random_bytes(16)); $s['owner']['recovery']=Security::hash($newCode);
                 Store::log($s,'owner_recovered');
             });
-            Security::establish($vv->store); $_SESSION['recovery_once']=$newCode;
+            $_SESSION['recovery_once']=$newCode; Security::establish($vv->store);
         } else Security::login($vv->store,val($_POST,'password'));
         redirect(admin_url());
     } catch(Failure $e) { $error=$e->getMessage(); http_response_code($e->status); }

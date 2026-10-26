@@ -83,6 +83,7 @@ if(($_SERVER['REQUEST_METHOD'] ?? '')==='POST') {
                 $id=val($_POST,'id'); if(!isset($vv->packages('plugin')[$id])) throw new Failure('Extension introuvable.');
                 if(!in_array($id,$vv->state['plugins'],true) && !\VV\App::compatible($vv->packages('plugin')[$id])) throw new Failure('Version de l’extension incompatible avec ce CMS ou PHP.');
                 $vv->store->change(function(&$s) use($id) {
+                    if(in_array($id,$s['plugins'],true)) \VV\SecondFactor::guardPlugin($id,$s);
                     if(in_array($id,$s['plugins'],true)) $s['plugins']=array_values(array_diff($s['plugins'],[$id])); else $s['plugins'][]=$id;
                     Store::log($s,'plugin_toggled',$id);
                 }); break;
@@ -94,6 +95,7 @@ if(($_SERVER['REQUEST_METHOD'] ?? '')==='POST') {
                 Security::reauth($vv->store,val($_POST,'current_password')); $type=val($_POST,'type'); $id=val($_POST,'id');
                 if(!in_array($type,['theme','plugin'],true) || !isset($vv->packages($type)[$id]) || ($type==='theme' && $id==='profil-or')) throw new Failure('Module protégé ou introuvable.');
                 $vv->store->change(function(&$s) use($type,$id) {
+                    if($type==='plugin') \VV\SecondFactor::guardPlugin($id,$s);
                     if(($type==='theme' && $s['settings']['theme']===$id) || ($type==='plugin' && in_array($id,$s['plugins'],true))) throw new Failure('Désactivez d’abord ce module.');
                     Tools::removeTree(VV_ROOT.'/content/'.($type==='theme'?'themes':'plugins').'/'.$id);
                     Store::log($s,'package_deleted',$type.':'.$id);

@@ -2,9 +2,15 @@
 
 **Un petit CMS personnel auto-hébergé en PHP + SQLite, pour un propriétaire unique.** Publiez un profil, des pages et des articles ; gérez les médias ; ajoutez des thèmes et des extensions natifs.
 
-[English](README.md) · [Installer](docs/fr/installation.md) · [Mettre à jour](MISE-A-JOUR-1.3.0.md) · [Contribuer](CONTRIBUTING.fr.md) · [Versions](https://github.com/farhadtoor/voilavoila-cms/releases)
+[English](README.md) · [Installer](docs/fr/installation.md) · [Mettre à jour](EXTENSIONS-ENGINE-OTP-FR-EN.md) · [Contribuer](CONTRIBUTING.fr.md) · [Versions](https://github.com/farhadtoor/voilavoila-cms/releases)
 
-La version actuelle du moteur est la **1.3.0**. La branche `main` contient aussi la documentation bilingue et les vérifications de développement. Les instantanés historiques 1.0.0 et 1.1.0 restent documentés séparément.
+La version actuelle du moteur est la **1.3.1**. La branche `main` contient aussi la documentation bilingue et les vérifications de développement. Les instantanés historiques 1.0.0 et 1.1.0 restent documentés séparément.
+
+## Extensions 1.3.1
+
+WordPress Engine 0.2 : vrai moteur facultatif pour thèmes/plugins, profil de compatibilité WooCommerce et copie éditoriale. Authenticator OTP 1.0 : QR local, application TOTP et codes de secours, avec enforcement de session indépendant de l’activation des extensions.
+
+[Installer les extensions FR/EN](EXTENSIONS-ENGINE-OTP-FR-EN.md) · [OTP](docs/OTP.fr.md) · [Engine](docs/WP-RUNTIME.fr.md)
 
 ## Nouveautés 1.3.0
 

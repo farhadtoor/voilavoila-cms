@@ -1,0 +1,1 @@
+{"id":"otp","type":"plugin","api":1,"name":"VoilaVoila Authenticator OTP","version":"1.0.0","author":"VoilaVoila","description":"TOTP authenticator with local QR and recovery codes / TOTP, QR local et codes de secours","requires_cms":"1.3.1","requires_php":"8.3","license":"MIT"}

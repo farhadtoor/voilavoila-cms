@@ -7,8 +7,8 @@ const {chromium}=require('playwright');const fs=require('node:fs');let browser;
  const ck=(name,ok)=>{if(!ok)throw Error(name);checks.push(name);};
  await page.goto(native+'/login.php');await page.locator('[name=password]').fill('WP_runtime_owner_130!');await page.getByRole('button',{name:'Ouvrir mon espace'}).click();await page.waitForURL('**/admin.php*');
  ck('browser native login',page.url().startsWith(native));
- await page.goto(native+'/admin.php?view=plugin-wp-runtime');const form=page.locator('form:has(input[name=op][value=open])');await form.locator('[name=current_password]').fill('WP_runtime_owner_130!');
- await form.getByRole('button',{name:'Ouvrir WordPress'}).click();await page.waitForURL(legacy+'/compat/wp-admin/');await page.waitForLoadState('networkidle');
+ await page.goto(native+'/admin.php?view=plugin-wp-runtime');const form=page.locator('form:has(input[name=op][value=open])');await form.locator('[name=target]').selectOption('plugins');await form.locator('[name=current_password]').fill('WP_runtime_owner_130!');
+ await form.getByRole('button',{name:'Ouvrir WordPress'}).click();await page.waitForURL(legacy+'/compat/wp-admin/plugins.php');await page.waitForLoadState('networkidle');
  ck('browser cross-origin single-use SSO',await page.locator('#wpadminbar').count()===1);
  ck('real administration logo and CSS loaded',await page.locator('#footer-left img[alt=VoilaVoila]').evaluate(img=>img.complete&&img.naturalWidth===1024)&&await page.locator('#adminmenu').evaluate(el=>getComputedStyle(el).backgroundColor!=='rgba(0, 0, 0, 0)'));
  const nonce=await page.evaluate(async()=>{const r=await fetch('/compat/wp-admin/admin-ajax.php?action=rest-nonce');return r.text();});
@@ -21,6 +21,14 @@ const {chromium}=require('playwright');const fs=require('node:fs');let browser;
  ck('mobile WordPress page fits viewport',await mobile.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
  const publicApi=await mobile.evaluate(async()=>{const r=await fetch('/compat/wp-admin/admin-ajax.php',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({action:'vv_probe',value:'guest browser'})});return {status:r.status,body:await r.json()};});ck('visitor fetch receives bridge CSRF transport',publicApi.status===200&&publicApi.body.value==='guest browser');
  const nojs=await browser.newContext({javaScriptEnabled:false}),plain=await nojs.newPage();await plain.goto(legacy+'/compat/');await plain.locator('form').getByRole('button',{name:'Probe'}).click();ck('WordPress public form works without JavaScript',(await plain.locator('body').innerText()).includes('"value":"hello"'));
+ if(process.env.VV_WOO_PRODUCT_ID){
+  const store=await browser.newContext({viewport:{width:390,height:844}}),shop=await store.newPage();shop.on('pageerror',e=>errors.push(e.message));await shop.goto(legacy+'/compat/');
+  const cart=await shop.evaluate(async id=>{const initial=await fetch('/compat/wp-json/wc/store/v1/cart');const nonce=initial.headers.get('Nonce');const added=await fetch('/compat/wp-json/wc/store/v1/cart/add-item',{method:'POST',headers:{'Content-Type':'application/json','Nonce':nonce},body:JSON.stringify({id:Number(id),quantity:1})});return {status:added.status,cart:await added.json()};},process.env.VV_WOO_PRODUCT_ID);
+  ck('WooCommerce browser uses genuine Store API nonce and cart',cart.status===201&&cart.cart.items[0].quantity===1);
+  await shop.goto(legacy+'/compat/?page_id='+process.env.VV_WOO_CART_PAGE);await shop.getByText('VV compatibility product',{exact:true}).first().waitFor({state:'visible',timeout:30000}).catch(async()=>{throw Error('CART '+JSON.stringify({text:(await shop.locator('body').innerText()).slice(0,1800),errors,failed}));});
+  ck('real WooCommerce cart page renders the selected product',await shop.getByText('VV compatibility product',{exact:true}).count()>0);
+  ck('WooCommerce cart page fits mobile viewport',await shop.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+ }
  ck('no failed local CSS or script assets',failed.length===0);ck('no browser JavaScript exceptions',errors.length===0);
  fs.writeFileSync(process.env.VV_WP_BROWSER_REPORT,JSON.stringify({checks:checks.length,passed:checks,browser:browser.version(),errors,failed},null,2)+'\n');await browser.close();console.log('PASS',checks.length,'real WordPress browser checks');
 })().catch(async e=>{console.error(e);if(browser)await browser.close();process.exit(1);});
