@@ -2,14 +2,15 @@
 const {chromium}=require('playwright');
 const fs=require('node:fs');
 const path=require('node:path');
+let runningBrowser;
 (async()=>{
  const base=process.env.VV_TEST_BASE,work=process.env.VV_BROWSER_WORK;
  if(!base||!work)throw Error('Run through tests/browser_120.py');
  const launch={headless:true,args:['--no-sandbox']};
  if(process.env.VV_BROWSER_EXECUTABLE)launch.executablePath=process.env.VV_BROWSER_EXECUTABLE;
- const browser=await chromium.launch(launch),checks=[],errors=[];
+ const browser=runningBrowser=await chromium.launch(launch),checks=[],errors=[];
  const owner=await browser.newContext({viewport:{width:1440,height:1000}});
- const page=await owner.newPage();page.on('pageerror',e=>errors.push(e.message));
+ const page=await owner.newPage();page.setDefaultTimeout(15000);page.on('pageerror',e=>errors.push(e.message));
  const ck=(name,ok)=>{if(!ok)throw Error(name);checks.push(name);};
  const save=async()=>{await Promise.all([page.waitForURL(/admin\.php\?view=editor.*id=/),page.locator('#content-editor button[type=submit]').click()]);await page.waitForLoadState('networkidle');};
  await page.goto(base+'/login.php');await page.locator('input[name=password]').fill('Browser_validation_120!');
@@ -85,4 +86,4 @@ const path=require('node:path');
  const report={checks:checks.length,passed:checks,errors,browser:await browser.version()};
  fs.writeFileSync(path.join(work,'browser-report.json'),JSON.stringify(report,null,2)+'\n');
  await browser.close();console.log(JSON.stringify(report));
-})().catch(e=>{console.error(e);process.exit(1)});
+})().catch(async e=>{console.error(e);if(runningBrowser)await runningBrowser.close();process.exitCode=1;});

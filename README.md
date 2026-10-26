@@ -2,9 +2,13 @@
 
 **A small, self-hosted PHP + SQLite CMS for one owner.** Publish a personal profile, pages and posts; manage media; extend it with native themes and plugins.
 
-[Français](README.fr.md) · [Install](docs/en/installation.md) · [Upgrade](docs/en/upgrade-1.2.md) · [Contribute](CONTRIBUTING.md) · [Releases](https://github.com/farhadtoor/voilavoila-cms/releases)
+[Français](README.fr.md) · [Install](docs/en/installation.md) · [Upgrade](MISE-A-JOUR-1.2.1.md) · [Contribute](CONTRIBUTING.md) · [Releases](https://github.com/farhadtoor/voilavoila-cms/releases)
 
-The current application version is **1.2.0**. The `main` branch also includes the bilingual project documentation and development checks. The original 1.0.0 and 1.1.0 archives are preserved as separate releases; they are not merged into one installation.
+The current application version is **1.2.1**. The `main` branch also includes the bilingual project documentation and development checks. Historical 1.0.0 and 1.1.0 snapshots remain documented separately.
+
+## New in 1.2.1
+
+Checked flat release archives, read-only hosting preflight, PHP 8.5 GD compatibility and package-based CI including real browser journeys. Owner data and SQLite schema are retained. See [upgrade](MISE-A-JOUR-1.2.1.md), [GitHub](GITHUB-v1.2.1-FR-EN.md) and [hosting pilots](docs/HOSTING-PILOT-FR-EN.md).
 
 ## What you can do
 
@@ -27,7 +31,8 @@ Requirements: **PHP 8.3+** with DOM, mbstring, fileinfo and PDO SQLite; GD with 
 From the application folder:
 
 ```sh
-php bin/console.php status
+export VV_STORAGE_PATH="$HOME/voilavoila-cms-local-data"
+php bin/console.php doctor
 php bin/console.php install-key
 php -d memory_limit=256M -d upload_max_filesize=64M -d post_max_size=70M -S 127.0.0.1:8787 router.php
 ```
@@ -55,10 +60,10 @@ Native PHP extensions run with the hosting process privileges. Only install code
 | Security and privacy | [Guide](docs/en/security.md) | [Guide](docs/fr/securite.md) |
 | Native theme/plugin API | [SDK](sdk/API.en.md) | [SDK](sdk/API.md) |
 | Testing and limitations | [Guide](docs/en/testing.md) | [Guide](docs/fr/tests.md) |
-| GitHub publication | [Steps](GITHUB-v1.2.0-FR-EN.md) | [Étapes](GITHUB-v1.2.0-FR-EN.md) |
+| GitHub publication | [Steps](GITHUB-v1.2.1-FR-EN.md) | [Étapes](GITHUB-v1.2.1-FR-EN.md) |
 | Community and maintenance | [Guide](docs/en/community.md) | [Guide](docs/fr/communaute.md) |
 
-For development checks, run `python3 tools/check_repo.py` and `python3 tests/run.py`. The tests use temporary application copies and synthetic data. See the testing guide before running them. CI is supplied for PHP 8.3/8.4/8.5; its first GitHub run remains to be completed. Historical release reports and current reproducible checks are distinguished in the guide.
+For development checks, run `python3 tools/check_repo.py` and `python3 tests/run.py`. The tests use temporary application copies and synthetic data. See the testing guide before running them. The 1.2.1 workflow builds and tests a shared release archive on PHP 8.3/8.4/8.5 and Chromium; confirm its hosted result after pushing the commit. Historical release reports and current reproducible checks are distinguished in the guide.
 
 ## Contribute and get help
 

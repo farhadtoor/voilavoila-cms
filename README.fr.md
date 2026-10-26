@@ -2,9 +2,13 @@
 
 **Un petit CMS personnel auto-hébergé en PHP + SQLite, pour un propriétaire unique.** Publiez un profil, des pages et des articles ; gérez les médias ; ajoutez des thèmes et des extensions natifs.
 
-[English](README.md) · [Installer](docs/fr/installation.md) · [Mettre à jour](docs/fr/mise-a-jour-1.2.md) · [Contribuer](CONTRIBUTING.fr.md) · [Versions](https://github.com/farhadtoor/voilavoila-cms/releases)
+[English](README.md) · [Installer](docs/fr/installation.md) · [Mettre à jour](MISE-A-JOUR-1.2.1.md) · [Contribuer](CONTRIBUTING.fr.md) · [Versions](https://github.com/farhadtoor/voilavoila-cms/releases)
 
-La version actuelle du moteur est la **1.2.0**. La branche `main` contient aussi la documentation bilingue et les vérifications de développement. Les archives originales 1.0.0 et 1.1.0 sont conservées comme deux versions distinctes ; elles ne se superposent pas dans une même installation.
+La version actuelle du moteur est la **1.2.1**. La branche `main` contient aussi la documentation bilingue et les vérifications de développement. Les instantanés historiques 1.0.0 et 1.1.0 restent documentés séparément.
+
+## Nouveautés 1.2.1
+
+Archive plate vérifiée, diagnostic d’hébergement en lecture seule, compatibilité GD PHP 8.5 et CI sur le paquet avec véritable parcours navigateur. Identifiants, contenus et schéma SQLite conservés. [Mise à jour](MISE-A-JOUR-1.2.1.md) · [GitHub FR/EN](GITHUB-v1.2.1-FR-EN.md) · [Pilotes](docs/HOSTING-PILOT-FR-EN.md).
 
 ## Fonctions
 
@@ -25,7 +29,8 @@ Prérequis : **PHP 8.3+**, DOM, mbstring, fileinfo et PDO SQLite ; GD avec les c
 Depuis le dossier du CMS :
 
 ```sh
-php bin/console.php status
+export VV_STORAGE_PATH="$HOME/voilavoila-cms-local-data"
+php bin/console.php doctor
 php bin/console.php install-key
 php -d memory_limit=256M -d upload_max_filesize=64M -d post_max_size=70M -S 127.0.0.1:8787 router.php
 ```
@@ -44,7 +49,7 @@ Une extension PHP native s’exécute avec les droits du processus de l’héber
 
 Les guides couvrent l’[installation](docs/fr/installation.md), la [migration](docs/fr/mise-a-jour.md), l’[architecture et les versions](docs/fr/architecture.md), la [sécurité](docs/fr/securite.md), le [SDK](sdk/API.md), les [tests](docs/fr/tests.md), la [publication GitHub](docs/fr/publication.md) et la [communauté](docs/fr/communaute.md). Chaque guide dispose d’un équivalent anglais accessible dans le [README anglais](README.md).
 
-Vérifications : `python3 tools/check_repo.py` puis `python3 tests/run.py`. Les tests utilisent des copies temporaires et des données fictives. Lisez le guide de tests. La CI fournie cible PHP 8.3/8.4/8.5 ; sa première exécution sur GitHub reste à effectuer. Les rapports historiques et les tests rejouables actuels sont distingués dans le guide.
+Vérifications : `python3 tools/check_repo.py` puis `python3 tests/run.py`. Les tests utilisent des copies temporaires et des données fictives. Lisez le guide de tests. Le workflow 1.2.1 construit et teste un ZIP commun sur PHP 8.3/8.4/8.5 et Chromium ; confirmer son résultat hébergé après publication du commit. Les rapports historiques et les tests rejouables actuels sont distingués dans le guide.
 
 ## Participer et obtenir de l’aide
 

@@ -2,7 +2,7 @@ Options -Indexes
 DirectoryIndex index.php
 <IfModule mod_rewrite.c>
 RewriteEngine On
-RewriteRule ^(?:core|storage|bin|sdk|docs|tests|tools)(?:/|$) - [F,L,NC]
+RewriteRule ^(?:core|storage|bin|sdk|docs|tests|tools|files)(?:/|$) - [F,L,NC]
 RewriteRule ^content/(?:plugins|themes)/.*\.php$ - [F,L,NC]
 RewriteRule (^|/)\.(?!well-known/) - [F,L]
 </IfModule>

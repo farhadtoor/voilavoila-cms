@@ -17,4 +17,5 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 WORKDIR /work
 COPY . /work
+RUN if [ -f BUILD-INFO.json ]; then python3 tools/verify_release.py --directory /work; fi
 CMD ["python3", "tests/run.py"]

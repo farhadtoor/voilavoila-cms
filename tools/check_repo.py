@@ -7,6 +7,8 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 SKIP = {'.git', '.venv', 'node_modules', '__pycache__', 'dist', 'build', 'test-results'}
+REQUIRED = ['core/bootstrap.php', 'core/App.php', 'core/Store.php', 'core/Media.php',
+            'index.php', 'admin.php', 'media.php', 'tests/run.py', 'content/themes/profil-or/index.php']
 
 
 def main():
@@ -14,11 +16,18 @@ def main():
     parser.add_argument('--allow-template', action='store_true', help='Allow unconfigured distribution templates')
     args = parser.parse_args()
     errors, count = [], 0
+    for name in REQUIRED:
+        if not (ROOT / name).is_file():
+            errors.append(f'Missing active CMS file: {name}')
     for path in ROOT.rglob('*'):
         rel = path.relative_to(ROOT)
         if any(part in SKIP for part in rel.parts) or not path.is_file():
             continue
         count += 1
+        if rel.as_posix().endswith('/core/bootstrap.php') and rel.as_posix() != 'core/bootstrap.php':
+            errors.append(f'Misplaced duplicate CMS tree: {rel}; install the application at the repository root')
+        if rel.parts[0] == 'files' and len(rel.parts) > 1 and rel.parts[1] in {'core', 'tests'}:
+            errors.append(f'Inactive correction copy: {rel}; replace active core/tests files instead')
         if path.is_symlink():
             errors.append(f'Symlink: {rel}')
         if rel.parts[0] == 'storage' and rel.as_posix() not in ['storage/.htaccess', 'storage/index.php']:

@@ -1,4 +1,4 @@
-# Architecture du CMS 1.1
+# Architecture du CMS 1.2.1
 
 Le moteur fournit les données et les autorisations. Le thème reçoit un contexte de lecture. Les extensions ajoutent des comportements via des points explicites. Il n’existe qu’un propriétaire : aucune table d’utilisateurs, inscription publique, matrice de rôles ou API publique d’écriture.
 
@@ -14,7 +14,9 @@ Le moteur fournit les données et les autorisations. Le thème reçoit un contex
 | `core/Security.php` | Sessions privées, CSRF, origine, hachage, limitation et contrôle propriétaire |
 | `core/Content.php` | Validation éditoriale, nettoyage HTML, slugs, versions et images |
 | `core/App.php` | Thèmes, extensions, points d’accroche et contexte public |
-| `core/Tools.php` | ZIP, contrôle des chemins, sauvegarde/restauration, import WXR |
+| `core/Tools.php` | ZIP, chemins, sauvegarde/restauration et délégation de l’import WXR |
+| `core/WordPress.php` | Import hors ligne et correspondance des contenus/médias |
+| `core/Hosting.php` | Diagnostic en lecture seule sans requête réseau ni fichier de sonde |
 | `core/AdminViews.php` | Interface de gestion |
 | `content/themes/<id>` | `cms.json`, `index.php`, `style.css` et modèles facultatifs |
 | `content/plugins/<id>` | `cms.json`, `plugin.php` et ressources facultatives |

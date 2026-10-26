@@ -19,3 +19,6 @@ dialog{background:var(--surface);border:1px solid #6d634d;border-radius:18px;pad
 .package-delete{margin-top:20px;border-top:1px solid var(--line);padding-top:14px}.package-delete>summary{font-size:11px;color:var(--muted)}.package-delete .hint{font-size:11px}.package-delete label{font-size:11px}
 
 .logs-panel{margin-top:24px}.logs-panel details{margin-top:20px}.log-tail{font-size:11px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere;background:#0b0d10;border:1px solid var(--line);padding:16px;border-radius:8px;max-height:330px;overflow:auto}
+
+/* Hosting checks also fit the mobile Tools page. */
+#hosting-check .check-row{flex-wrap:wrap;gap:.5rem}#hosting-check .check-row small{overflow-wrap:anywhere;min-width:0}

@@ -1,34 +1,62 @@
-# Tests et éléments de validation
+# Tests et preuves — 1.2.1
 
 [English](../en/testing.md)
 
-## Rejouer les contrôles
+Prérequis de développement : Python 3.9+, PHP 8.3+ avec DOM, mbstring, fileinfo, PDO SQLite, ZIP et GD JPEG/PNG/WebP. Git sert aux tests de fabrication ; Node/Playwright servent seulement aux tests navigateur.
 
-Python 3.9+ et PHP 8.3+ avec DOM, mbstring, fileinfo, PDO SQLite, ZIP et GD avec JPEG/PNG/WebP. Aucun paquet Python tiers requis. Depuis la racine du dépôt :
+## Contrôles des sources
 
-```sh
+```bash
 python3 tools/check_repo.py
-python3 tests/run.py
-node --check assets/admin.js
-node --check assets/site.js
+python3 tests/release_tools.py --report test-results/release-tools.json
+python3 tests/run.py --report test-results/http.json
+php content/plugins/wp-porter/tests/run.php
 ```
 
-Si PHP n’est pas dans PATH : `python3 tests/run.py --php /chemin/absolu/vers/php`. Rapport facultatif : `python3 tests/run.py --report test-results/report.json`. Node sert aux deux vérifications de syntaxe JavaScript, pas au fonctionnement du CMS ou de la suite Python.
+Le lanceur HTTP contient 190 contrôles : 50 HTTP, 35 SQLite/médias/logs, deux échecs/reprises de migration, 80 scénarios documents/commentaires/WordPress et 23 contrôles diagnostic/sous-dossier. Les outils de release ont 28 contrôles ; WP Porter en a 44 ; chaque mise à jour/retour arrière depuis une version précédente en a 11.
 
-`tests/run.py` copie l’application dans un dossier temporaire du système, utilise un stockage distinct et un port localhost, crée des images fictives avec GD puis nettoie le tout. Il ne lit ni ne modifie le vrai dossier `storage`. Utilisez ce lanceur ; les scripts individuels dépendent de son environnement temporaire. Les comptes/mots de passe fictifs sont des données de tests, pas un compte livré. Ne les réutilisez pas.
+Les écritures utilisent un stockage temporaire et des données synthétiques. Les mots de passe des tests ne correspondent pas à un compte livré et ne doivent pas être réutilisés.
 
-La suite comprend 50 scénarios HTTP, 35 contrôles SQLite/médias/journaux/migration et deux contrôles d’échec/reprise : **87 vérifications**. La migration utilise des données synthétiques de schéma 1, sans stockage d’un véritable propriétaire. Sont contrôlés les originaux JPEG/PNG/WebP et leurs empreintes, les tables/révisions, refus d’accès privé, séparation/rotation des journaux, annulation SQL, anciens ZIP et absence de double migration. Le lanceur portable a réussi localement le 25 octobre 2026 sur PHP 8.3.6. Voir [le rapport enregistré](../verification-github-kit.json).
+## Contrôler le ZIP installable
 
-`tools/check_repo.py` repère des données d’exécution, marqueurs de configuration inachevés et liens Markdown locaux cassés. L’option `--allow-template` accepte les marqueurs uniquement dans le modèle non configuré. Elle ne remplace pas une détection complète de secrets ni la relecture des fichiers préparés pour Git. Le script attend un arbre source propre : gardez le stockage d’un site réel ailleurs.
+Enregistrer les sources dans Git avant fabrication. Le constructeur inclut l'identifiant du commit réel et refuse les sorties existantes.
 
-## CI
+```bash
+python3 tools/build_release.py --version 1.2.1
+python3 tools/verify_release.py dist/VoilaVoila-CMS-1.2.1.zip --expected-version 1.2.1 --extract test-results/from-zip
+python3 test-results/from-zip/tools/verify_release.py --directory test-results/from-zip
+python3 test-results/from-zip/tests/run.py --report test-results/extracted-http.json
+```
 
-`.github/workflows/ci.yml` lance les contrôles de dépôt/JavaScript et des jobs PHP 8.3, 8.4 et 8.5 en conteneurs, sur push vers `main`, PR et déclenchement manuel. Checkout utilise une empreinte complète vérifiée, sans identifiants persistés ; jeton en lecture seule, aucun secret de déploiement ni publication automatique. Dependabot propose mensuellement les mises à jour d’actions, à relire avant fusion.
+Choisir un dossier d'extraction neuf si la destination contient déjà des fichiers. La vérification de l'installation couvre les fichiers déclarés et les copies résiduelles connues, pas les données d'exécution ni les ajouts personnalisés. Une somme de contrôle ne prouve pas l'identité de l'auteur.
 
-`tests/Dockerfile` active les codecs JPEG/WebP. Pour reproduire avec Docker : `docker build --build-arg PHP_VERSION=8.3 -f tests/Dockerfile -t vv-cms-tests .`, puis `docker run --rm vv-cms-tests`. Docker était absent ici : compilation du conteneur, jobs PHP 8.4/8.5 et workflow GitHub réel restent **non validés**. Consultez leurs premiers résultats avant de présenter ces versions comme testées. Ce conteneur de tests est distinct du Dockerfile d’hébergement à la racine.
+## Parcours navigateur
 
-## Rapports historiques
+Installer les dépendances de développement épinglées puis Chromium :
 
-La 1.0.0 fournie avait des rapports de 50 tests HTTP et 29 contrôles navigateur. La 1.1.0 indique 50 HTTP, 35 fonctions/migration, deux échecs/reprises et 29 navigateur : 116 au total. Ces résultats concernent leur préparation d’origine, pas une nouvelle CI GitHub. L’ancien script navigateur n’est pas fourni comme suite portable actuelle. Un nouveau passage navigateur reste manuel, en attendant une contribution dédiée.
+```bash
+cd tests
+npm ci --ignore-scripts
+npx playwright install --with-deps --only-shell chromium
+cd ..
+python3 tests/browser_120.py --report test-results/browser.json
+```
 
-Apache/Nginx HTTPS réels, Docker de déploiement, double-clic macOS, limites d’un hébergeur réel, audit indépendant et publication GitHub n’ont pas été exécutés pendant cette préparation. Le moteur original est conservé ; les nouveaux tests visent sa copie isolée, pas un site de production existant.
+Les 18 scénarios s'exécutent par défaut dans un `/cms` temporaire : propriétaire, activation de Commentaires, documents, ordinateur/mobile, FR/EN et rendu sans JavaScript. Le serveur et les données de test sont supprimés à la fin. `VV_BROWSER_EXECUTABLE` permet un Chromium compatible déjà installé ; le rapport indique sa version réelle.
+
+## Mise à jour et retour arrière
+
+La CI fabrique des jeux de sources de confiance depuis les commits épinglés de la version 1.1 et de la version 1.2 corrigée. Ces jeux ne sont pas présentés comme identiques octet par octet aux anciens ZIP publiés. Avec les archives de test correspondantes :
+
+```bash
+python3 tests/upgrade_release.py --previous-zip /chemin/vers/previous-1.1.zip --previous-version 1.1.0 --report test-results/upgrade-1.1.json
+python3 tests/upgrade_release.py --previous-zip /chemin/vers/previous-1.2.zip --previous-version 1.2.0 --report test-results/upgrade-1.2.json
+```
+
+Ces tests exécutent du PHP : utiliser uniquement des sources de confiance. Ils vérifient identifiants, contenus, réglages et fichier personnalisé, puis restaurent le code ancien et son état privé compatible.
+
+## CI et qualification
+
+Le workflow vérifie les sources/outils, fabrique un ZIP commun, le valide puis le transmet aux jobs PHP 8.3/8.4/8.5 et Chromium. Le conteneur PHP est construit depuis le paquet extrait et vérifie les fichiers déclarés avant les tests, y compris les ZIP du SDK.
+
+Le rapport JSON de livraison identifie les exécutions locales réelles. La nouvelle exécution Actions reste à confirmer après publication du commit. Les [pilotes d'hébergement](../HOSTING-PILOT-FR-EN.md) attendent les offres réelles. Les rapports des [versions historiques](../history/README.md) sont des références distinctes.

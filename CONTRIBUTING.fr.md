@@ -26,6 +26,16 @@ node --check assets/site.js
 
 Les tests fonctionnels demandent PHP et ses extensions ; Node sert uniquement aux vérifications JavaScript. Consultez le [guide de tests](docs/fr/tests.md). Ajoutez une vérification de régression ciblée lorsqu’elle aide à valider un changement de comportement. Une correction documentaire demande une relecture et un contrôle des liens, sans nouveau test d’exécution.
 
+## Co-auteurs des commits
+
+Pour ajouter automatiquement les co-auteurs configurés aux messages de commit, exécutez cette commande une fois dans chaque clone :
+
+```sh
+./scripts/setup-ai-attribution.sh
+```
+
+Le hook local au dépôt ajoute les trailers `Co-authored-by:` de Codex et Claude. Ajoutez un autre co-auteur avec `git config --local --add ai.coauthor "Nom <email>"`. GitHub ne crédite un co-auteur que si l’adresse du trailer est associée à son compte GitHub. Pour ignorer l’attribution d’un commit, préfixez la commande par `SKIP_AI_COAUTHORS=1`.
+
 ## Conventions
 
 Suivez les conventions des fichiers existants. Utilisez des requêtes préparées, `Store::change()` pour les écritures, une validation serveur et des sorties HTML échappées. Les fichiers PHP des modules exigent la protection `VV_ROOT`. N’imbriquez pas les transactions. Une extension écrit dans son propre espace `plugin_data`. Discutez toute nouvelle dépendance d’exécution et son coût de maintenance.

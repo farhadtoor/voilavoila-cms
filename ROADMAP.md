@@ -1,16 +1,22 @@
 # Roadmap / Feuille de route
 
-## Delivered 1.2 / Livré en 1.2
+## 1.2.1 — stabilization / stabilisation
 
-Documents, moderated guest comments and offline WordPress migration. / Documents, commentaires modérés et migration WordPress hors ligne.
+Checked flat archives, clean active paths, hosting preflight, package-based PHP CI, browser journeys and upgrade/rollback checks. / Archives plates vérifiées, chemins actifs propres, diagnostic, CI du paquet, navigateur et contrôles de mise à jour/retour arrière.
 
-[Architecture and gaps / Architecture et écarts](docs/MILESTONE-1-FR-EN.md).
+[Milestone 2 / Jalon 2](docs/MILESTONE-2-FR-EN.md). Real OVH/Infomaniak pilots remain pending / Les pilotes réels restent en attente : [checklist](docs/HOSTING-PILOT-FR-EN.md).
+
+## Delivered in 1.2 / Livré en 1.2
+
+Secure documents, moderated guest comments and offline WordPress migration. / Documents, commentaires modérés et migration WordPress hors ligne.
+
+[Milestone 1 / Jalon 1](docs/MILESTONE-1-FR-EN.md).
 
 ## Next / Ensuite
 
-1. Run real PHP 8.3/8.4/8.5 GitHub CI and hosting pilots. / Exécuter la CI et les installations pilotes.
-2. Validate retention, real migration samples and strict DOCX usability. / Valider conservation, migrations réelles et politique DOCX.
-3. Scope Forms MVP: fields, validation, submissions, email, spam, retention, export. / Cadrer le MVP Forms.
-4. Extend existing SEO after Forms scope stabilizes. / Étendre le SEO existant après stabilisation du périmètre Forms.
+1. Confirm the new hosted CI and complete the hosting pilots. / Confirmer la nouvelle CI et les pilotes.
+2. 1.3: minimal Forms prerequisites, then Forms MVP (fields, validation, private submissions, notifications, anti-spam, retention and exports). / Préparer puis livrer le MVP Forms.
+3. 1.4: extend existing SEO and editorial migration tools. / Étendre le SEO et la migration éditoriale.
+4. 1.5: operations, retention, diagnostics and community pilots driven by feedback. / Exploitation et communauté selon les retours.
 
-Commerce, licensing, payments, public accounts, marketplace and hosted services require separate scope approval. No pricing or remote-service dependency is hardcoded. / Commerce, licences, paiements, comptes publics, marketplace et services hébergés demandent un périmètre distinct. Aucun prix ni dépendance distante n’est codé.
+Keep one owner, API 1 and optional business plugins. Commerce, licensing, payments, public accounts, marketplace and hosted services require separate scope. / Conserver propriétaire unique, API 1 et modules facultatifs ; cadrer séparément les produits suivants.

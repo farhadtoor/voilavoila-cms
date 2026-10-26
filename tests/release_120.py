@@ -2,7 +2,7 @@
 """Security and migration scenarios for 1.2.0. Isolated synthetic data only."""
 import argparse, copy, hashlib, hmac, io, json, os, re, shutil, subprocess, tempfile, time, zipfile
 from pathlib import Path
-from run import SOURCE, server, read_state
+from run import SOURCE, server, read_state, CMS_VERSION
 from http_client import Session
 
 PASSWORD='Release_validation_120!'
@@ -48,7 +48,7 @@ def main():
             installed=owner.get(base+'/install.php')
             key=(storage/'setup-key.php').read_text().split('\n',1)[1]
             r=owner.post(base+'/install.php',data={'csrf':token(installed),'setup_key':key,'name':'Release 1.2','email':'owner@example.test','password':PASSWORD,'password_confirm':PASSWORD})
-            ck('fresh 1.2 installation with optional plugins inactive',r.status_code==200 and '1.2.0' in r.text and 'comments' not in state()['plugins'] and 'wp-porter' not in state()['plugins'])
+            ck('fresh 1.2 installation with optional plugins inactive',r.status_code==200 and CMS_VERSION in r.text and 'comments' not in state()['plugins'] and 'wp-porter' not in state()['plugins'])
             pdf=b'%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n'
             csv=b'\xef\xbb\xbfname,value\r\nsample,42\r\n'
             bundle=archive({'guide.txt':'A document','notes/data.csv':csv,'guide.pdf':pdf})
@@ -153,7 +153,7 @@ def main():
             ck('deactivation retains comments and removes public form',r.status_code==200 and 'comments_token' not in guest.get(base+'/?p=bienvenue').text and len(state()['plugin_data']['comments']['rows'])>0)
             post('plugin.toggle',{'id':'comments'},view='plugins')
             # Export WXR with excerpts/tags/statuses, image/document links and local media.
-            subprocess.run([php,'-r',"$i=imagecreatetruecolor(80,60);imagejpeg($i,'photo.jpeg');imagedestroy($i);"],cwd=work,check=True)
+            subprocess.run([php,'-r',"$i=imagecreatetruecolor(80,60);imagejpeg($i,'photo.jpeg');unset($i);"],cwd=work,check=True)
             jpeg=(work/'photo.jpeg').read_bytes()
             upload_zip=archive({'uploads/2026/10/photo.jpeg':jpeg,'uploads/2026/10/report.docx':docs['report.docx'][0],'uploads/2026/10/data.csv':csv})
             def item(pid,kind='post',status='publish',body='<p>WordPress body</p>',extra='',title=None):
@@ -237,7 +237,7 @@ def main():
             ck('purging comments requires the current owner password',r.status_code==403 and len(state()['plugin_data']['comments']['rows'])>0)
             r=post('plugin.save',{'op':'purge','confirm':'PURGE','current_password':PASSWORD},view='plugin-comments')
             ck('owner can explicitly purge all comment data',r.status_code==200 and not state()['plugin_data']['comments']['rows'])
-        report={'version':'1.2.0','runtime':subprocess.check_output([php,'-r','echo PHP_VERSION;'],text=True),'checks':len(checks),'passed':checks,'fixture':'Temporary synthetic data; removed after run'}
+        report={'version':CMS_VERSION,'runtime':subprocess.check_output([php,'-r','echo PHP_VERSION;'],text=True),'checks':len(checks),'passed':checks,'fixture':'Temporary synthetic data; removed after run'}
         if args.report:args.report.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
         print('PASS',len(checks),'release 1.2 checks',flush=True)
 if __name__=='__main__':main()

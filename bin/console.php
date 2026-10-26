@@ -1,6 +1,18 @@
 <?php
 declare(strict_types=1);
 if(PHP_SAPI!=='cli') { http_response_code(404); exit; }
+// Preflight also works before installation and never opens the real database.
+if(($argv[1] ?? '')==='doctor') {
+    define('VV_ROOT',dirname(__DIR__));
+    require VV_ROOT.'/core/Hosting.php';
+    $report=\VV\Hosting::report(getenv('VV_STORAGE_PATH') ?: VV_ROOT.'/storage');
+    if(in_array('--json',$argv,true)) echo json_encode($report,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;
+    else {
+        echo 'VoilaVoila CMS '.$report['cms_version'].' — PHP '.$report['php'].PHP_EOL;
+        foreach($report['checks'] as $check) echo strtoupper($check['status']).' '.$check['label_en'].': '.$check['value'].PHP_EOL;
+    }
+    exit($report['passed']?0:1);
+}
 require dirname(__DIR__).'/core/bootstrap.php';
 use VV\Security; use VV\Store;
 $command=$argv[1] ?? 'help';
@@ -32,5 +44,5 @@ switch($command) {
         echo 'Installé : '.($vv->state['installed']?'oui':'non')."\nContenus : ".count($vv->state['contents'])."\nMédias : ".count($vv->state['media'])."\n";
         foreach(['dom','mbstring','fileinfo','pdo_sqlite','gd','zip'] as $module) echo $module.' : '.(extension_loaded($module)?'OK':'ABSENT')."\n";
         break;
-    default: echo "VoilaVoila CMS\n\nphp bin/console.php install-key   Afficher la clé de première installation\nphp bin/console.php status        Vérifier la configuration\nphp bin/console.php reset-owner   Réinitialiser l’accès localement\nphp bin/console.php safe-mode     Désactiver les extensions et restaurer Profil Or\n";
+    default: echo "VoilaVoila CMS\n\nphp bin/console.php doctor        Diagnostic hébergement sans écriture\nphp bin/console.php doctor --json Rapport à partager sans secret\nphp bin/console.php install-key   Afficher la clé de première installation\nphp bin/console.php status        Vérifier la configuration\nphp bin/console.php reset-owner   Réinitialiser l’accès localement\nphp bin/console.php safe-mode     Désactiver les extensions et restaurer Profil Or\n";
 }

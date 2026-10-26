@@ -85,7 +85,7 @@ final class Media {
             if(!extension_loaded('gd')) throw new Failure('Activez PHP GD pour valider les images.',503);
             $memory=ini_get('memory_limit'); $limit=(int)$memory*match(strtolower(substr($memory,-1))){'g'=>1073741824,'m'=>1048576,'k'=>1024,default=>1};
             if($limit>0 && memory_get_usage(true)+8*$info[0]*$info[1]+16*1024*1024>$limit) throw new Failure('Mémoire PHP insuffisante pour valider cette image.');
-            $image=@imagecreatefromstring($bytes); if(!$image) throw new Failure('Image illisible.'); imagedestroy($image);
+            $image=@imagecreatefromstring($bytes); if(!$image) throw new Failure('Image illisible.'); unset($image);
         }
         // Preserve original bytes and extension; shorten only very long display names.
         if(mb_strlen($name)>160) $name=mb_substr(pathinfo($name,PATHINFO_FILENAME),0,150).'.'.$ext;
