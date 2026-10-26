@@ -1,0 +1,6 @@
+<?php
+// auto_prepend_file for the private FPM pool. The listener itself must be private.
+$vv_cfg=require __DIR__.'/engine-config.php';
+$vv_context=$_SERVER['VV_CONTEXT']??'';$vv_signature=$_SERVER['VV_SIGNATURE']??'';
+if(($_SERVER['SCRIPT_FILENAME']??'')!==__DIR__.'/vv-Gateway.php'||!is_string($vv_context)||strlen($vv_context)>32768||!is_string($vv_signature)||!hash_equals(hash_hmac('sha256',$vv_context,$vv_cfg['secret']),$vv_signature)) {http_response_code(403);exit('Private worker.');}
+unset($vv_cfg,$vv_context,$vv_signature);

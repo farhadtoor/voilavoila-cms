@@ -42,6 +42,18 @@ final class PrivateSessions implements \SessionHandlerInterface, \SessionUpdateT
 
 final class Security {
     public static string $nonce;
+    public static function nativeOrigin(): void {
+        $expected=getenv('VV_CANONICAL_ORIGIN') ?: '';
+        if($expected==='' || defined('VV_WP_PROXY') || PHP_SAPI==='cli') return;
+        if((self::tls()?'https://':'http://').strtolower($_SERVER['HTTP_HOST'] ?? '')!==strtolower(rtrim($expected,'/'))) throw new Failure('Origine indisponible / Origin unavailable.',404);
+    }
+    public static function quarantinePath(string $path): string {
+        if(strlen($path)>2048 || preg_match('/%(?:00|2f|5c|25)/i',$path)) throw new Failure('Chemin refusé / Path refused.',403);
+        $path=rawurldecode($path);
+        if(!mb_check_encoding($path,'UTF-8') || preg_match('~[\x00-\x20\x7f\\\\]|(?:^|/)\.{1,2}(?:/|$)|//~',$path) || !str_starts_with($path,'/')) throw new Failure('Chemin refusé / Path refused.',403);
+        return $path;
+    }
+
     public static function local(): bool {
         return in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1','::1'], true)
             && preg_match('/^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/D', $_SERVER['HTTP_HOST'] ?? '') === 1;

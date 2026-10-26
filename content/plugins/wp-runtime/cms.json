@@ -1,0 +1,1 @@
+{"id":"wp-runtime","type":"plugin","api":1,"name":"VoilaVoila WordPress Runtime (experimental)","version":"0.1.0","author":"VoilaVoila","description":"Optional private WordPress worker / Moteur WordPress privé facultatif","requires_cms":"1.3.0","requires_php":"8.3","license":"MIT"}

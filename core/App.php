@@ -5,6 +5,8 @@ defined('VV_ROOT') || exit;
 
 final class App {
     public array $state; public array $hooks=[]; public array $shortcodes=[]; public array $adminPages=[];
+    private ?array $bodyContext=null;
+    public function currentContent(): ?array { return $this->bodyContext; }
     public function __construct(public Store $store) { $this->refresh(); }
     public function refresh(): void { $this->state=$this->store->read(); }
     public static function compatible(array $m): bool {
@@ -47,9 +49,11 @@ final class App {
         $this->adminPages['plugin-'.$id]=['label'=>$label,'render'=>$render,'save'=>$save];
     }
     public function body(array $content): string {
-        $html=Content::field($content,'body');
-        $html=preg_replace_callback('/\[([a-z][a-z0-9_-]{0,30})\]/',function($m) { return isset($this->shortcodes[$m[1]]) ? ($this->shortcodes[$m[1]])() : \e($m[0]); },$html);
-        return \vv_filter('content_html',$html,$content);
+        $before=$this->bodyContext; $this->bodyContext=$content;
+        try { $html=Content::field($content,'body');
+            $html=preg_replace_callback('/\[([a-z][a-z0-9_-]{0,30})\]/',function($m) { return isset($this->shortcodes[$m[1]]) ? ($this->shortcodes[$m[1]])() : \e($m[0]); },$html);
+            return \vv_filter('content_html',$html,$content);
+        } finally { $this->bodyContext=$before; }
     }
     public function publicItems(string $type='post',string $search=''): array {
         $rows=array_filter($this->state['contents'],function($c) use($type,$search) {

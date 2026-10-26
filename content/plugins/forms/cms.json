@@ -1,0 +1,1 @@
+{"id":"forms","type":"plugin","api":1,"name":"VoilaVoila Forms","version":"1.0.0","author":"VoilaVoila","description":"Formulaires et boîte privée SQLite / Forms and private inbox","requires_cms":"1.3.0","requires_php":"8.3","license":"MIT"}

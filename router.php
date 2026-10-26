@@ -7,5 +7,8 @@ if($documentRoot && str_starts_with(__DIR__.DIRECTORY_SEPARATOR,$documentRoot.DI
     $mount=str_replace('\\','/',substr(__DIR__,strlen($documentRoot)));
     if($mount!=='' && str_starts_with($path,$mount.'/')) $path=substr($path,strlen($mount));
 }
+if(preg_match('~^/content/plugins/wp-runtime/engine(?:/|$)~i',$path)) { http_response_code(404); exit; }
+if(str_starts_with($path,'/compat/')) { $_SERVER['SCRIPT_NAME']=($mount ?? '').'/wp.php'; require __DIR__.'/wp.php'; exit; }
+if(preg_match('~^/assets/(?:ui|mod|core|admin|media)/~',$path)) { $_SERVER['SCRIPT_NAME']=($mount ?? '').'/wp-assets.php'; require __DIR__.'/wp-assets.php'; exit; }
 if(preg_match('~^/files(?:/|$)~i',$path) || preg_match('~(?:^|/)(?:\.|core/|storage/|bin/|sdk/|docs/|tests/|tools/)~',$path) || preg_match('~^/content/(?:plugins|themes)/.*\.php$~i',$path) || preg_match('~\.(?:md|log|bak|yaml|command)$~i',$path)) { http_response_code(404); exit; }
 return false;

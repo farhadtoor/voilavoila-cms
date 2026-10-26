@@ -30,3 +30,13 @@ Thumbs.db
 
 # Optional browser dependencies
 /tests/node_modules/
+
+# Private optional WordPress engine: never commit code installations or secrets.
+/wordpress/
+/wp-quarantine/
+**/engine-config.php
+**/wp-connector.php
+**/wordpress-verification.php
+/wordpress-*.zip
+*.sql
+*.sql.gz

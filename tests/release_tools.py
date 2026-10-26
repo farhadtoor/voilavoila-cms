@@ -101,12 +101,14 @@ def main():
                 ck(name, True)
             else:
                 raise AssertionError('Accepted malformed release: ' + name)
-        for path in ['../escape.php', '/absolute.php', 'bad\\path.php', 'drive:probe.php', 'storage/cms.sqlite', '.env', 'files/tests/probe.py']:
+        for path in ['../escape.php', '/absolute.php', 'bad\\path.php', 'drive:probe.php', 'storage/cms.sqlite', '.env', 'files/tests/probe.py', 'engine-config.php', 'wp-connector.php', 'wordpress-verification.php', 'wordpress/wp-load.php', 'wp-quarantine/index.php', 'backup.sql']:
             reject('reject unsafe path ' + path, {**files, path: b'blocked'})
         reject('reject duplicate filename under different case', files, duplicate='INDEX.PHP')
         reject('reject symlink entry', {**files, 'probe.txt': b'/outside'}, mode=stat.S_IFLNK | 0o777)
         incomplete = dict(files); incomplete.pop('core/Hosting.php')
         reject('reject a partial core before extraction', incomplete)
+        incomplete130 = dict(files); incomplete130.pop('content/plugins/wp-runtime/engine/Gateway.template.txt')
+        reject('reject missing 1.3 worker template', incomplete130)
         malformed = dict(files); malformed['BUILD-INFO.json'] = b'[]'
         reject('reject malformed build metadata', malformed)
         reject('reject an oversized source entry', {**files, 'large.txt': b'x' * (8 * 1024 * 1024 + 1)})

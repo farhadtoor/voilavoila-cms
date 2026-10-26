@@ -117,7 +117,7 @@ post('plugin.toggle',{'id':'test-module'},view='plugins')
 post('package.delete',{'id':'test-module','type':'plugin','current_password':PASS},view='plugins')
 check('inactive module files can be removed',not pathlib.Path('app/content/plugins/test-module').exists())
 
-r=post('backup.export',view='tools')
+r=post('backup.export',{'current_password':PASS},view='tools')
 check('portable ZIP backup downloadable',r.status_code==200 and r.content[:2]==b'PK')
 backup=r.content
 with zipfile.ZipFile(io.BytesIO(backup)) as z:

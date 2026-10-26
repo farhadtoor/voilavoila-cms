@@ -2,6 +2,9 @@ Options -Indexes
 DirectoryIndex index.php
 <IfModule mod_rewrite.c>
 RewriteEngine On
+RewriteRule ^content/plugins/wp-runtime/engine(?:/|$) - [F,L,NC]
+RewriteRule ^compat/ wp.php [L,QSA]
+RewriteRule ^assets/(?:ui|mod|core|admin|media)/ wp-assets.php [L,QSA]
 RewriteRule ^(?:core|storage|bin|sdk|docs|tests|tools|files)(?:/|$) - [F,L,NC]
 RewriteRule ^content/(?:plugins|themes)/.*\.php$ - [F,L,NC]
 RewriteRule (^|/)\.(?!well-known/) - [F,L]
