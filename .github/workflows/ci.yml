@@ -2,34 +2,65 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
-
 permissions:
   contents: read
-
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
+defaults:
+  run:
+    shell: bash
 jobs:
   repository:
     name: Repository checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
       - run: python3 tools/check_repo.py
-      - run: node --check assets/admin.js
-      - run: node --check assets/site.js
-      - run: node --check tests/browser_120.cjs
-
+      - run: node --check assets/admin.js && node --check assets/site.js && node --check tests/browser_120.cjs
+      - run: python3 tests/release_tools.py --report test-results/release-tools.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: release-tool-checks
+          path: test-results/*.json
+          if-no-files-found: ignore
+          retention-days: 7
+  package:
+    name: Build checked release archive
+    needs: repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - run: python3 tools/build_release.py
+      - run: python3 tools/verify_release.py dist/VoilaVoila-CMS-*.zip --expected-commit "$GITHUB_SHA" --report test-results/archive.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cms-package
+          path: |
+            dist/VoilaVoila-CMS-*.zip
+            dist/VoilaVoila-CMS-*.sha256
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: archive-verification
+          path: test-results/archive.json
+          retention-days: 7
   php:
     name: PHP ${{ matrix.php }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    needs: package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -38,11 +69,71 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - name: Build isolated test image
+          fetch-depth: 0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: cms-package
+          path: dist
+      - name: Verify and extract the exact package
+        run: |
+          python3 tools/verify_release.py dist/VoilaVoila-CMS-*.zip --expected-commit "$GITHUB_SHA" --extract test-results/application
+          mkdir -p test-results/fixtures test-results/reports
+          git archive --format=zip --prefix=voila-cms/ --output=test-results/fixtures/previous-1.1.zip 3eb97b39490ad3761dabe6fe5e2c5a52105dfc7f
+          git archive --format=zip --prefix=voila-cms/ --output=test-results/fixtures/previous-1.2.zip 8467df9e936951b9e5a4a5bde0d0221aac353bc8
+      - name: Build PHP image from the extracted archive
         env:
           PHP_VERSION: ${{ matrix.php }}
-        run: docker build --build-arg "PHP_VERSION=$PHP_VERSION" -f tests/Dockerfile -t vv-cms-tests .
-      - name: PHP syntax
-        run: docker run --rm vv-cms-tests sh -eu -c 'find . -name "*.php" -not -path "./storage/*" -print0 | xargs -0 -n1 php -l'
-      - name: HTTP and migration checks
-        run: docker run --rm vv-cms-tests
+        run: docker build --build-arg "PHP_VERSION=$PHP_VERSION" -f test-results/application/tests/Dockerfile -t vv-cms-tests test-results/application
+      - name: PHP syntax in the archive
+        run: docker run --rm vv-cms-tests sh -eu -c 'find . -name "*.php" -print0 | xargs -0 -n1 php -l'
+      - name: HTTP, migration, hosting and subdirectory checks
+        run: docker run --rm --mount "type=bind,src=$PWD/test-results/reports,dst=/reports" vv-cms-tests python3 tests/run.py --report /reports/http.json
+      - name: Upgrade from 1.1 and rollback
+        run: docker run --rm --mount "type=bind,src=$PWD/test-results/fixtures,dst=/fixtures,readonly" --mount "type=bind,src=$PWD/test-results/reports,dst=/reports" vv-cms-tests python3 tests/upgrade_release.py --previous-zip /fixtures/previous-1.1.zip --previous-version 1.1.0 --report /reports/upgrade-1.1.json
+      - name: Upgrade from corrected 1.2 and rollback
+        run: docker run --rm --mount "type=bind,src=$PWD/test-results/fixtures,dst=/fixtures,readonly" --mount "type=bind,src=$PWD/test-results/reports,dst=/reports" vv-cms-tests python3 tests/upgrade_release.py --previous-zip /fixtures/previous-1.2.zip --previous-version 1.2.0 --report /reports/upgrade-1.2.json
+      - name: WordPress Porter unit checks
+        run: docker run --rm vv-cms-tests php content/plugins/wp-porter/tests/run.php | tee test-results/reports/porter.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: reports-php-${{ matrix.php }}
+          path: test-results/reports/*
+          if-no-files-found: ignore
+          retention-days: 7
+  browser:
+    name: Chromium on the release archive
+    needs: package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: cms-package
+          path: dist
+      - run: python3 tools/verify_release.py dist/VoilaVoila-CMS-*.zip --expected-commit "$GITHUB_SHA" --extract test-results/application
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      - name: PHP browser-test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends php8.3-cli php8.3-xml php8.3-mbstring php8.3-gd php8.3-zip php8.3-sqlite3
+      - name: Install pinned browser tools
+        working-directory: test-results/application/tests
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps --only-shell chromium
+      - name: Browser journey in a subdirectory
+        working-directory: test-results/application
+        run: python3 tests/browser_120.py --php php8.3 --report ../browser.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: browser-report
+          path: test-results/browser.json
+          if-no-files-found: ignore
+          retention-days: 7

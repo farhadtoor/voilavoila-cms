@@ -6,6 +6,7 @@ import copy
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import socket
@@ -18,6 +19,7 @@ import urllib.request
 import zipfile
 
 SOURCE = Path(__file__).resolve().parents[1]
+CMS_VERSION = re.search(r"define\('VV_VERSION',\s*'([^']+)'\)", (SOURCE / 'core/bootstrap.php').read_text()).group(1)
 GUARD = b'<?php http_response_code(404); exit; ?>\n'
 
 
@@ -72,11 +74,20 @@ def legacy_fixture(work):
 
 
 @contextlib.contextmanager
-def server(php, work, storage):
+def server(php, work, storage, mount=''):
     with socket.socket() as sock:
         sock.bind(('127.0.0.1', 0))
         port = sock.getsockname()[1]
-    base = f'http://127.0.0.1:{port}'
+    document_root = work / 'app'
+    router = document_root / 'router.php'
+    if mount:
+        if not re.fullmatch(r'[a-z][a-z0-9-]{0,30}', mount):
+            raise ValueError('Test mount must be one safe URL segment')
+        document_root = work / 'web'
+        mounted = document_root / mount
+        shutil.copytree(work / 'app', mounted, ignore=shutil.ignore_patterns('node_modules', 'test-results', '__pycache__'))
+        router = mounted / 'router.php'
+    base = f'http://127.0.0.1:{port}' + ('/' + mount if mount else '')
     env = {**os.environ, 'VV_STORAGE_PATH': str(storage), 'VV_TEST_BASE': base}
     env.pop('VV_TRUSTED_PROXIES', None)
     with (work / ('php-' + storage.name + '.log')).open('w', encoding='utf-8') as log:
@@ -84,8 +95,8 @@ def server(php, work, storage):
         # multipart requests reach the application, including its 8 MiB checks.
         process = subprocess.Popen([php, '-d', 'memory_limit=256M',
                                     '-d', 'upload_max_filesize=64M', '-d', 'post_max_size=70M',
-                                    '-S', f'127.0.0.1:{port}', '-t', str(work / 'app'),
-                                    str(work / 'app/router.php')], cwd=work, env=env, stdout=log, stderr=log)
+                                    '-S', f'127.0.0.1:{port}', '-t', str(document_root),
+                                    str(router)], cwd=work, env=env, stdout=log, stderr=log)
         try:
             for _ in range(100):
                 if process.poll() is not None:
@@ -128,11 +139,11 @@ def main():
     subprocess.run([php, '-r', preflight], check=True)
     with tempfile.TemporaryDirectory(prefix='vv-cms-tests-') as temp:
         work = Path(temp)
-        shutil.copytree(SOURCE, work / 'app', ignore=shutil.ignore_patterns('.git', 'storage', '__pycache__', '.venv', 'node_modules', 'dist', 'build'))
+        shutil.copytree(SOURCE, work / 'app', ignore=shutil.ignore_patterns('.git', 'storage', '__pycache__', '.venv', 'node_modules', 'dist', 'build', 'test-results'))
         (work / 'fixtures').mkdir()
-        fixture_code = "$i=imagecreatetruecolor(200,120);$c=imagecolorallocate($i,198,164,98);imagefill($i,0,0,$c);imagepng($i,'fixtures/image.png');imagejpeg($i,'fixtures/image.jpeg');imagewebp($i,'fixtures/image.webp');imagedestroy($i);"
+        fixture_code = "$i=imagecreatetruecolor(200,120);$c=imagecolorallocate($i,198,164,98);imagefill($i,0,0,$c);imagepng($i,'fixtures/image.png');imagejpeg($i,'fixtures/image.jpeg');imagewebp($i,'fixtures/image.webp');unset($i);"
         subprocess.run([php, '-r', fixture_code], cwd=work, check=True)
-        env = {**os.environ, 'VV_TEST_PHP': php, 'VV_TEST_PHP_VERSION': 'PHP ' + version,
+        env = {**os.environ, 'VV_TEST_PHP': php, 'VV_TEST_PHP_VERSION': 'PHP ' + version, 'VV_TEST_CMS_VERSION': CMS_VERSION,
                'PYTHONIOENCODING': 'utf-8', 'PYTHONDONTWRITEBYTECODE': '1'}
         with server(php, work, work / 'state') as server_env:
             subprocess.run([sys.executable, str(SOURCE / 'tests/integration.py')], cwd=work,
@@ -145,8 +156,10 @@ def main():
                        env=env, check=True)
         subprocess.run([sys.executable, str(SOURCE / 'tests/release_120.py'), '--php', php,
                         '--report', str(work / 'release-120-results.json')], env=env, check=True)
+        subprocess.run([sys.executable, str(SOURCE / 'tests/maintenance_121.py'), '--php', php,
+                        '--report', str(work / 'maintenance-results.json')], env=env, check=True)
         reports = [json.loads((work / name).read_text(encoding='utf-8')) for name in
-                   ['integration-results.json', 'features-results.json', 'migration-failure-results.json', 'release-120-results.json']]
+                   ['integration-results.json', 'features-results.json', 'migration-failure-results.json', 'release-120-results.json', 'maintenance-results.json']]
         summary = {'runtime': 'PHP ' + version, 'checks': sum(r['checks'] for r in reports),
                    'suites': reports, 'storage': 'Temporary synthetic data; removed after run'}
         if args.report:

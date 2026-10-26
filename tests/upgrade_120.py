@@ -2,7 +2,7 @@
 """Verify a real 1.1.0 archive can be upgraded to current source without data loss."""
 import argparse, hashlib, json, os, re, shutil, subprocess, tempfile, zipfile
 from pathlib import Path
-from run import SOURCE, server, read_state
+from run import SOURCE, server, read_state, CMS_VERSION
 from http_client import Session
 
 def main():
@@ -38,7 +38,7 @@ def main():
             ck('upgrade preserves exact posts pages and revisions',before['contents']==after['contents'])
             ck('upgrade preserves existing plugin data settings and activation choices',all(before[k]==after[k] for k in ['settings','plugin_data','plugins']))
             ck('upgrade does not generate a new setup key',not (storage/'setup-key.php').exists())
-            ck('existing owner session remains usable on 1.2',s.get(env['VV_TEST_BASE']+'/admin.php').status_code==200 and '1.2.0' in s.get(env['VV_TEST_BASE']+'/admin.php').text) if base==env['VV_TEST_BASE'] else ck('existing owner can sign in on 1.2',_login(s,env['VV_TEST_BASE'],password))
+            ck('existing owner session remains usable on 1.2',s.get(env['VV_TEST_BASE']+'/admin.php').status_code==200 and CMS_VERSION in s.get(env['VV_TEST_BASE']+'/admin.php').text) if base==env['VV_TEST_BASE'] else ck('existing owner can sign in on 1.2',_login(s,env['VV_TEST_BASE'],password))
             ck('new optional plugins are available and remain inactive','comments' not in after['plugins'] and 'wp-porter' not in after['plugins'] and (work/'app/content/plugins/comments/plugin.php').is_file() and (work/'app/content/plugins/wp-porter/plugin.php').is_file())
             import sqlite3
             with sqlite3.connect(storage/'cms.sqlite') as db:
@@ -49,5 +49,5 @@ def _login(session,base,password):
     r=session.get(base+'/login.php');m=re.search(r'name="csrf" value="([a-f0-9]+)"',r.text)
     if not m:return False
     r=session.post(base+'/login.php',data={'csrf':m.group(1),'password':password})
-    return r.status_code==200 and '1.2.0' in r.text and '/login.php' not in r.url
+    return r.status_code==200 and CMS_VERSION in r.text and '/login.php' not in r.url
 if __name__=='__main__':main()

@@ -2,6 +2,16 @@
 
 Versions below identify the supplied application archives. Git history is reconstructed from those snapshots at import time; it does not recreate the original development timeline. / Les versions correspondent aux archives fournies. L’historique Git est reconstruit lors de l’import et ne reconstitue pas les étapes de développement d’origine.
 
+## 1.2.1 — 2026-10-26
+
+- Flat, committed-source release ZIPs with build metadata, complete SHA-256 manifest and bounded verification/extraction.
+- Removal and HTTP denial of residual correction copies; installed-code verification retains SDK ZIP coverage in test images.
+- Read-only hosting checks in Tools and CLI doctor; original media preserved without deprecated PHP 8.5 GD calls.
+- Shared-package CI across PHP 8.3/8.4/8.5, real Chromium journeys and explicit upgrade/rollback fixtures.
+- No SQLite schema or owner-data change. Bilingual publication, upgrade and pending hosting-pilot procedures.
+
+Distribution vérifiée, diagnostic et tests du paquet ; données conservées. [Notes FR/EN](docs/releases/v1.2.1.md).
+
 ## 1.2.0 — 2026-10-25
 
 - PDF/DOCX/ZIP/CSV: shared upload/import/restore validation, original bytes/extensions, forced download and editor insertion.

@@ -1,3 +1,5 @@
+> Référence historique 1.1. Pour la livraison actuelle, voir [Jalon 2 / 1.2.1](MILESTONE-2-FR-EN.md) et le rapport de validation joint.
+
 # Validation de VoilaVoila CMS 1.1.0
 
 Tests du 24 octobre 2026 sur une installation isolée, PHP 8.3.6 avec PDO SQLite, DOM, mbstring, fileinfo, GD et ZIP. Aucun site ou événement en ligne n’a été modifié.

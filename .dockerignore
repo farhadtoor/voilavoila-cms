@@ -2,6 +2,7 @@ storage/*
 !storage/.htaccess
 !storage/index.php
 *.zip
+!sdk/*.zip
 .git
 .DS_Store
 **/node_modules

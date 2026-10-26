@@ -1,34 +1,62 @@
-# Tests and evidence
+# Testing and evidence — 1.2.1
 
 [Français](../fr/tests.md)
 
-## Run the supplied checks
+Use Python 3.9+ and PHP 8.3+ with DOM, mbstring, fileinfo, PDO SQLite, ZIP and GD JPEG/PNG/WebP. Git is required by the release-builder checks. Node/Playwright are development-only dependencies.
 
-Use Python 3.9+ and PHP 8.3+ with DOM, mbstring, fileinfo, PDO SQLite, ZIP and GD including JPEG/PNG/WebP support. No third-party Python package is required. Commands run from the repository root:
+## Source checks
 
-```sh
+```bash
 python3 tools/check_repo.py
-python3 tests/run.py
-node --check assets/admin.js
-node --check assets/site.js
+python3 tests/release_tools.py --report test-results/release-tools.json
+python3 tests/run.py --report test-results/http.json
+php content/plugins/wp-porter/tests/run.php
 ```
 
-If PHP is not on PATH: `python3 tests/run.py --php /absolute/path/to/php`. Optional summary: `python3 tests/run.py --report test-results/report.json`. Node is needed only for the two JavaScript syntax checks, not to run the CMS or Python suite.
+The HTTP runner has 190 checks: 50 base HTTP, 35 SQLite/media/logging, two failed-migration/retry cases, 80 document/comment/WordPress scenarios and 23 hosting/subdirectory checks. The release-tool suite has 28 checks, WP Porter has 44, and each explicit previous-version upgrade/rollback suite has 11.
 
-`tests/run.py` copies the application into an OS temporary directory, uses separate temporary storage and a localhost port, generates synthetic images with GD and cleans everything up. It never reads or modifies the real `storage` directory. Use only this runner; the component scripts depend on its temporary environment. Temporary owners/passwords are test fixtures, not credentials for a shipped account. Do not reuse their passwords.
+All application writes use temporary synthetic storage. Test passwords are fixtures, not a shipped account. Do not reuse them.
 
-The suite covers 50 HTTP scenarios, 35 SQLite/media/logging/migration scenarios and two migration failure/retry scenarios: **87 checks**. The migration fixture is synthetic schema-1 data based on the supplied format; it does not use a real owner's storage. It verifies original JPEG/PNG/WebP bytes and SHA-256, database rows/revisions, private access denial, log separation/rotation, rollback, old backup imports and idempotence. On 25 October 2026 this portable runner passed locally on PHP 8.3.6. See [the recorded summary](../verification-github-kit.json).
+## Test the installable ZIP
 
-`tools/check_repo.py` detects unexpected runtime data, unfinished project tokens and broken local Markdown targets. Before configuring a distribution template only, `--allow-template` permits project tokens. It does not replace a complete secret scanner or a human staged-diff review. It expects a clean source tree: keep real deployment storage elsewhere.
+Commit the intended source before packaging. The builder records the actual commit and refuses existing output files.
 
-## CI
+```bash
+python3 tools/build_release.py --version 1.2.1
+python3 tools/verify_release.py dist/VoilaVoila-CMS-1.2.1.zip --expected-version 1.2.1 --extract test-results/from-zip
+python3 test-results/from-zip/tools/verify_release.py --directory test-results/from-zip
+python3 test-results/from-zip/tests/run.py --report test-results/extracted-http.json
+```
 
-`.github/workflows/ci.yml` runs repository/JavaScript checks and containerized PHP jobs for 8.3, 8.4 and 8.5 on pushes to `main`, pull requests and manual dispatch. Checkout is pinned to a verified full commit, credentials are not persisted, token permission is read-only and there are no deployment secrets or automatic releases. Dependabot proposes GitHub Action updates monthly. Review proposed changes before merging.
+Use a new extraction destination if it already contains files. Installed verification checks declared application bytes and known residual corrections; runtime data and additional custom modules are outside the release manifest. Checksums provide integrity, not author authentication.
 
-The `tests/Dockerfile` enables GD JPEG/WebP codecs. To reproduce with Docker: `docker build --build-arg PHP_VERSION=8.3 -f tests/Dockerfile -t vv-cms-tests .`, then `docker run --rm vv-cms-tests`. This environment had no Docker; the container build, PHP 8.4/8.5 jobs and actual GitHub workflow execution are **not yet validated**. Review the first results before describing those versions as tested. This test container is separate from the root hosting Dockerfile.
+## Browser journey
 
-## Historical release validation
+Install development dependencies from the lockfile, then install Chromium:
 
-The supplied 1.0.0 reports record 50 HTTP and 29 browser checks. The supplied 1.1.0 reports record 50 HTTP, 35 feature/migration, two failure/retry and 29 browser checks: 116 total. Those reports describe the original preparation; they are not a new GitHub CI run. The browser automation used then is not included as a current portable browser suite. A fresh browser pass remains manual unless a future contribution adds one.
+```bash
+cd tests
+npm ci --ignore-scripts
+npx playwright install --with-deps --only-shell chromium
+cd ..
+python3 tests/browser_120.py --report test-results/browser.json
+```
 
-Production Apache/Nginx HTTPS, root Docker deployment, macOS double-click launcher, real hosting limits, independent security auditing and actual GitHub publishing were not executed in this preparation. The original application source was preserved; new testing covers the source copy, not an existing production site.
+The harness has 18 checks and defaults to a temporary `/cms` installation. It creates an owner, enables comments, uploads real documents and exercises desktop/mobile, FR/EN and no-JavaScript rendering. The test closes its server and removes its synthetic state. `VV_BROWSER_EXECUTABLE` can point to a compatible existing Chromium; the report records the actual browser.
+
+## Upgrade and rollback
+
+The workflow builds trusted source fixtures from the pinned 1.1 tag commit and corrected 1.2 main commit. These are source fixtures, not claims that they are byte-identical to historical published release ZIPs. Given those fixture archives:
+
+```bash
+python3 tests/upgrade_release.py --previous-zip /path/to/previous-1.1.zip --previous-version 1.1.0 --report test-results/upgrade-1.1.json
+python3 tests/upgrade_release.py --previous-zip /path/to/previous-1.2.zip --previous-version 1.2.0 --report test-results/upgrade-1.2.json
+```
+
+Only run application-upgrade tests with trusted executable source fixtures. They verify owner/content/settings/custom-file preservation and restore both old code and compatible private state.
+
+## CI and qualification
+
+The workflow checks source/tooling, builds one immutable ZIP, validates it and shares it with PHP 8.3/8.4/8.5 and Chromium jobs. PHP containers are built from the extracted archive, and their declared code is checked before tests. SDK ZIPs are retained in the image.
+
+The accompanying validation JSON records local runs and versions. A new hosted Actions run is a separate result; confirm it after pushing the commit. [Hosting pilots](../HOSTING-PILOT-FR-EN.md) remain pending on actual offers. Historical reports are linked from [history](../history/README.md); they do not substitute for current evidence.
