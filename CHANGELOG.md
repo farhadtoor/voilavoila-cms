@@ -1,5 +1,10 @@
 # Changelog / Historique
 
+## 1.3.0
+
+Optional Forms/private inbox, transactional notification outbox, retention and exports; original logo and French signature; optional experimental private WordPress Runtime. Backup export/download now requires the current owner password.
+
+
 Versions below identify the supplied application archives. Git history is reconstructed from those snapshots at import time; it does not recreate the original development timeline. / Les versions correspondent aux archives fournies. L’historique Git est reconstruit lors de l’import et ne reconstitue pas les étapes de développement d’origine.
 
 ## 1.2.1 — 2026-10-26

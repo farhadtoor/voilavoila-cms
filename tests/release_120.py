@@ -98,7 +98,7 @@ def main():
             payload['body_fr']=''.join('<p><a href="/media.php?id='+m['id']+'&amp;download=1">'+m['name']+'</a></p>' for m in state()['media'].values() if m['public'])
             r=post('content.save',payload,view='editor')
             ck('document links save and render on posts',r.status_code==200 and 'report.docx' in guest.get(base+'/?p=bienvenue').text)
-            backup=post('backup.export',view='tools').content
+            backup=post('backup.export',{'current_password':PASSWORD},view='tools').content
             with zipfile.ZipFile(io.BytesIO(backup)) as z:
                 data=json.loads(z.read('data.json'))
                 ck('portable backup includes original document formats',all('media/'+m['stored_name'] in z.namelist() and z.read('media/'+m['stored_name'])==docs[m['name']][0] for m in data['media'].values() if m['name'] in docs))
@@ -219,7 +219,7 @@ def main():
             (work/'comments-fixture.json').write_text(json.dumps(saved_comments))
             cli("$vv->store->change(function(&$s){$s['plugin_data']['comments']=json_decode(file_get_contents('comments-fixture.json'),true);});")
             clear_limits()
-            before=state();portable=post('backup.export',view='tools').content
+            before=state();portable=post('backup.export',{'current_password':PASSWORD},view='tools').content
             r=post('backup.restore',{'current_password':PASSWORD,'confirm':'RESTAURER'},{'backup':('portable.zip',portable,'application/zip')},view='tools')
             after=state()
             ck('portable restore retains comments and WordPress provenance',r.status_code==200 and before['plugin_data']['comments']==after['plugin_data']['comments'] and all(after['contents'][cid].get('wp_key')==c.get('wp_key') for cid,c in before['contents'].items()) and all(after['media'][mid].get('wp_key')==m.get('wp_key') and after['media'][mid].get('wp_id')==m.get('wp_id') for mid,m in before['media'].items()))

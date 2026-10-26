@@ -47,3 +47,7 @@ Both original archives are preserved. Imported Git commits document snapshots, n
 This targets one PHP host and moderate traffic; state is still reconstructed in memory. Do not share storage across multiple servers with unreliable network filesystem locks. Media limits: 8 MiB per file, 8,000,000 pixels, 6,000 px per dimension, 2,000 media. Portable backup limits include 8 MiB editorial JSON, 64 MiB total expanded data and 10,000 restored contents. Check current validators before raising limits.
 
 Two themes: Profil Or and Profil Graphite. Plugins: Atelier, SEO, Connexion PASS (external link only). WordPress WXR 1.2 import adds pages/posts, defaults to draft, deduplicates repeat imports and does not download remote files. No payments, orders, customer accounts, WordPress runtime compatibility, cloud sync or automatic remote updater is provided.
+
+## 1.3
+
+Native content/media architecture is unchanged. Optional Forms keeps private submissions in SQLite plugin data. Optional WordPress Runtime uses a separate private process and SQL database, with no WordPress includes in the CMS. [Runtime](../WP-RUNTIME.md) · [Forms](../FORMS.md).

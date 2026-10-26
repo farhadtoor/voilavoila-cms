@@ -23,7 +23,7 @@ jobs:
         with:
           persist-credentials: false
       - run: python3 tools/check_repo.py
-      - run: node --check assets/admin.js && node --check assets/site.js && node --check tests/browser_120.cjs
+      - run: node --check assets/admin.js && node --check assets/site.js && node --check tests/browser_120.cjs && node --check tests/browser_130.cjs && node --check tests/browser_wp_runtime.cjs && node --check assets/wp-bridge.js
       - run: python3 tests/release_tools.py --report test-results/release-tools.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
@@ -92,6 +92,8 @@ jobs:
         run: docker run --rm --mount "type=bind,src=$PWD/test-results/fixtures,dst=/fixtures,readonly" --mount "type=bind,src=$PWD/test-results/reports,dst=/reports" vv-cms-tests python3 tests/upgrade_release.py --previous-zip /fixtures/previous-1.1.zip --previous-version 1.1.0 --report /reports/upgrade-1.1.json
       - name: Upgrade from corrected 1.2 and rollback
         run: docker run --rm --mount "type=bind,src=$PWD/test-results/fixtures,dst=/fixtures,readonly" --mount "type=bind,src=$PWD/test-results/reports,dst=/reports" vv-cms-tests python3 tests/upgrade_release.py --previous-zip /fixtures/previous-1.2.zip --previous-version 1.2.0 --report /reports/upgrade-1.2.json
+      - name: Upgrade from 1.2.1 and rollback
+        run: docker run --rm --mount "type=bind,src=$PWD/test-results/reports,dst=/reports" vv-cms-tests python3 tests/upgrade_release.py --previous-zip tests/fixtures/VoilaVoila-CMS-1.2.1.zip --previous-version 1.2.1 --report /reports/upgrade-1.2.1.json
       - name: WordPress Porter unit checks
         run: docker run --rm vv-cms-tests php content/plugins/wp-porter/tests/run.php | tee test-results/reports/porter.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -130,10 +132,13 @@ jobs:
       - name: Browser journey in a subdirectory
         working-directory: test-results/application
         run: python3 tests/browser_120.py --php php8.3 --report ../browser.json
+      - name: Forms desktop mobile and no-JS
+        working-directory: test-results/application
+        run: python3 tests/browser_130.py --php php8.3 --report ../browser-forms.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: browser-report
-          path: test-results/browser.json
+          path: test-results/browser*.json
           if-no-files-found: ignore
           retention-days: 7

@@ -2,9 +2,15 @@
 
 **A small, self-hosted PHP + SQLite CMS for one owner.** Publish a personal profile, pages and posts; manage media; extend it with native themes and plugins.
 
-[Français](README.fr.md) · [Install](docs/en/installation.md) · [Upgrade](MISE-A-JOUR-1.2.1.md) · [Contribute](CONTRIBUTING.md) · [Releases](https://github.com/farhadtoor/voilavoila-cms/releases)
+[Français](README.fr.md) · [Install](docs/en/installation.md) · [Upgrade](UPGRADE-1.3.0.md) · [Contribute](CONTRIBUTING.md) · [Releases](https://github.com/farhadtoor/voilavoila-cms/releases)
 
-The current application version is **1.2.1**. The `main` branch also includes the bilingual project documentation and development checks. Historical 1.0.0 and 1.1.0 snapshots remain documented separately.
+The current application version is **1.3.0**. The `main` branch also includes the bilingual project documentation and development checks. Historical 1.0.0 and 1.1.0 snapshots remain documented separately.
+
+## New in 1.3.0
+
+Optional Forms with a private SQLite inbox, deferred notifications and exports. Original VoilaVoila logo and French design signature. Optional experimental WordPress Runtime, isolated from the CMS process.
+
+[Forms](docs/FORMS.md) · [Runtime](docs/WP-RUNTIME.md) · [GitHub FR/EN](GITHUB-v1.3.0-FR-EN.md) · [Upgrade](UPGRADE-1.3.0.md)
 
 ## New in 1.2.1
 

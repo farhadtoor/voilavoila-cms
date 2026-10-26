@@ -123,3 +123,7 @@ Le filtre `wordpress_import_state_v1` reçoit `($state, $event)` et retourne le 
 Les pièces jointes utilisent `Media::metadata` et `Media::upload`, puis `media.php` pour la délivrance. Les validations internes de noms/ZIP/XML ne constituent pas une API de détection antivirus. Le mode hérité de `metadata` est réservé aux données 1.0 ; ne l’utilisez pas pour contourner le contrôle extension/MIME.
 
 Le formulaire visiteur de Commentaires utilise `Security::guestToken` / `guestPost`, distincts de la session propriétaire. `postOrigin` seul n’est **pas** une autorisation ni une vérification CSRF. Toute action administrative doit conserver `Security::post` et le contrôle propriétaire.
+
+## API 1 additions in 1.3 / Ajouts 1.3
+
+`$app->currentContent()` exposes content only during `$app->body()` rendering; shortcode callbacks still take zero arguments. `backup_restore_data_v1` filters validated editorial backup data before any restore writes. Active plugins must reject incompatible schemas. `forms_received_v1` runs after commit with identifiers only; `forms_transport_v1` is a trusted deferred transport returning `accepted`, `failed` or `unknown`. See [Forms](../docs/FORMS.fr.md).

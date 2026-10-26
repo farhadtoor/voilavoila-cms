@@ -1,0 +1,8 @@
+<?php
+if(PHP_SAPI!=='cli')exit;
+$command=$argv[1]??'help';
+if($command==='version'){$s=file_get_contents(__DIR__.'/wp-includes/version.php');preg_match('/\$wp_version\s*=\s*[\x27\x22]([^\x27\x22]+)[\x27\x22]/',$s,$m);echo ($m[1]??'unknown').PHP_EOL;exit;}
+require __DIR__.'/vv-CLI.php';
+if($command==='upgrade'){require __DIR__.'/wp-load.php';require_once __DIR__.'/wp-admin/includes/upgrade.php';wp_upgrade();echo "WordPress database upgrade complete.\n";}
+elseif($command==='cron'){define('DOING_CRON',true);require __DIR__.'/wp-cron.php';}
+else{fwrite(STDERR,"Use version, upgrade or cron. Run as the restricted engine user.\n");exit(1);}

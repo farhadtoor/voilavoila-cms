@@ -28,7 +28,7 @@ final class Tools {
         $p=$file['tmp_name']; if(filesize($p)<1 || filesize($p)>$max) throw new Failure('Archive trop volumineuse.',413); return $p;
     }
     /** Reject traversal, symlinks, duplicates, encrypted entries and decompression bombs before extraction. */
-    public static function zipEntries(\ZipArchive $zip,int $maxFiles=2200,int $maxBytes=67108864): array {
+    public static function zipEntries(\ZipArchive $zip,int $maxFiles=2200,int $maxBytes=67108864,int $maxFileBytes=8388608): array {
         if($zip->numFiles<1 || $zip->numFiles>$maxFiles) throw new Failure('Nombre de fichiers dans le ZIP non autorisé.');
         $total=0; $names=[];
         for($i=0;$i<$zip->numFiles;$i++) {
@@ -37,7 +37,7 @@ final class Tools {
             $ops=0; $attrs=0; $zip->getExternalAttributesIndex($i,$ops,$attrs);
             if(!in_array((($attrs>>16)&0170000),[0,0100000,0040000],true) || !empty($s['encryption_method'])) throw new Failure('Entrée spéciale, lien symbolique ou entrée chiffrée refusée.');
             $total+=(int)$s['size'];
-            if((int)$s['size']>8*1024*1024 || $total>$maxBytes || ((int)$s['size']>1048576 && (int)$s['size']>200*max(1,(int)$s['comp_size']))) throw new Failure('ZIP décompressé trop volumineux.',413);
+            if((int)$s['size']>$maxFileBytes || $total>$maxBytes || ((int)$s['size']>1048576 && (int)$s['size']>200*max(1,(int)$s['comp_size']))) throw new Failure('ZIP décompressé trop volumineux.',413);
             $names[strtolower($n)]=['name'=>$n,'index'=>$i,'size'=>$s['size']];
         }
         return $names;
@@ -153,6 +153,8 @@ final class Tools {
             $settings=self::settings($data['settings'],$app->state['settings'],$media);
             $theme=\val($data['settings'],'theme'); $settings['theme']=isset($app->packages('theme')[$theme])?$theme:'profil-or';
             if(!isset($contents[$settings['home_page']])) $settings['home_page']='';
+            $data=\vv_filter('backup_restore_data_v1',$data);
+            if(!is_array($data) || !is_array($data['plugin_data'] ?? null)) throw new Failure('Données d’extension invalides.');
             self::snapshot($app);
             $app->store->change(function(&$s) use($app,$zip,$media,$mediaEntries,$contents,$settings,$data) {
                 foreach($media as $id=>$m) {

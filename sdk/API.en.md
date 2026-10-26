@@ -123,3 +123,7 @@ Manifests may specify numeric minimum `requires_cms` and `requires_php` versions
 Attachments use `Media::metadata` / `Media::upload` and `media.php` delivery. Internal filename/ZIP/XML validation is not an antivirus API. Legacy metadata mode is reserved for 1.0 data, not a MIME-check bypass.
 
 The guest comment form uses `Security::guestToken` / `guestPost` separately from owner sessions. `postOrigin` alone is **neither** authorization nor CSRF verification. Admin actions must retain `Security::post` and owner checks.
+
+## API 1 additions in 1.3 / Ajouts 1.3
+
+`$app->currentContent()` exposes content only during `$app->body()` rendering; shortcode callbacks still take zero arguments. `backup_restore_data_v1` filters validated editorial backup data before any restore writes. Active plugins must reject incompatible schemas. `forms_received_v1` runs after commit with identifiers only; `forms_transport_v1` is a trusted deferred transport returning `accepted`, `failed` or `unknown`. See [Forms](../docs/FORMS.md).

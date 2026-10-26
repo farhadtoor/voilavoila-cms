@@ -22,3 +22,5 @@ dialog{background:var(--surface);border:1px solid #6d634d;border-radius:18px;pad
 
 /* Hosting checks also fit the mobile Tools page. */
 #hosting-check .check-row{flex-wrap:wrap;gap:.5rem}#hosting-check .check-row small{overflow-wrap:anywhere;min-width:0}
+
+.vv-brand-signature{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;max-width:100%;font-size:12px;line-height:1.4}.vv-brand-signature .vv-wordmark{width:28px;height:28px;flex:none;object-fit:contain}.vv-origin{display:inline-flex;align-items:center;flex-wrap:wrap;gap:.4rem;font-size:11px}.vv-origin img{width:18px;height:12px;border:1px solid #999;flex:none}.site-footer,.admin-footer{flex-wrap:wrap;gap:1rem}.brand-mark img{display:block;object-fit:contain}

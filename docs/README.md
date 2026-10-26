@@ -9,3 +9,7 @@ Les dossiers `en` et `fr` contiennent les guides bilingues. Les rapports `verifi
 ## Livraison 1.2.1 / Delivery 1.2.1
 
 [Upgrade / Mise à jour](../MISE-A-JOUR-1.2.1.md) · [GitHub FR/EN](../GITHUB-v1.2.1-FR-EN.md) · [Milestone / Jalon 2](MILESTONE-2-FR-EN.md) · [Hosting pilots / Pilotes](HOSTING-PILOT-FR-EN.md).
+
+## 1.3
+
+[Forms FR](FORMS.fr.md) · [Forms EN](FORMS.md) · [WordPress Runtime FR](WP-RUNTIME.fr.md) · [WordPress Runtime EN](WP-RUNTIME.md) · [Testing](TESTING-1.3.md) · [GitHub FR/EN](../GITHUB-v1.3.0-FR-EN.md).

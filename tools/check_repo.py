@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 import re
 import sys
+from release_archive import unsafe_source_path
 
 ROOT = Path(__file__).resolve().parents[1]
 SKIP = {'.git', '.venv', 'node_modules', '__pycache__', 'dist', 'build', 'test-results'}
@@ -24,6 +25,8 @@ def main():
         if any(part in SKIP for part in rel.parts) or not path.is_file():
             continue
         count += 1
+        if unsafe_source_path(rel.as_posix()):
+            errors.append(f'Private or unsafe application path: {rel}')
         if rel.as_posix().endswith('/core/bootstrap.php') and rel.as_posix() != 'core/bootstrap.php':
             errors.append(f'Misplaced duplicate CMS tree: {rel}; install the application at the repository root')
         if rel.parts[0] == 'files' and len(rel.parts) > 1 and rel.parts[1] in {'core', 'tests'}:

@@ -17,6 +17,25 @@ require dirname(__DIR__).'/core/bootstrap.php';
 use VV\Security; use VV\Store;
 $command=$argv[1] ?? 'help';
 switch($command) {
+    case 'forms:notifications': case 'forms:purge':
+        if(!in_array('forms',$vv->state['plugins'],true)) throw new \VV\Failure('Activate Forms first.');
+        $vv->bootPlugins();
+        if($command==='forms:purge') {
+            if(!in_array('--confirm=PURGE',$argv,true)) throw new \VV\Failure('Use --confirm=PURGE.');
+            echo \VV\Forms::purgeExpired($vv)." requests purged.\n";
+        } else echo json_encode(\VV\Forms::drain($vv),JSON_THROW_ON_ERROR).PHP_EOL;
+        break;
+    case 'wp:quarantine:status': case 'wp:quarantine:prepare': case 'wp:plugin:wrap': case 'wp:theme:wrap':
+        require_once VV_ROOT.'/content/plugins/wp-runtime/Runtime.php';
+        if($command==='wp:quarantine:status') {
+            $cfg=\VV\WordPress\Runtime::config($vv);
+            echo json_encode(['enabled'=>\VV\WordPress\Runtime::enabled($vv),'public_url'=>$cfg['public_url'],'prepared'=>is_file($cfg['engine_root'].'/engine-config.php')],JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR).PHP_EOL;
+        } elseif($command==='wp:quarantine:prepare') {
+            $raw=stream_get_contents(STDIN,4097);if(strlen($raw)>4096)throw new \VV\Failure('Database input too large.');
+            $db=json_decode($raw,true,8,JSON_THROW_ON_ERROR);if(!is_array($db))throw new \VV\Failure('Database JSON required on stdin.');
+            echo \VV\WordPress\Runtime::prepare($vv,$argv[2]??'',$db).PHP_EOL;
+        } else echo \VV\WordPress\Runtime::wrap($vv,$argv[2]??'',$command==='wp:plugin:wrap'?'plugin':'theme').PHP_EOL;
+        break;
     case 'install-key':
         if($vv->state['installed']) { fwrite(STDERR,"Le CMS est déjà installé.\n"); exit(1); }
         echo 'Clé : '.$vv->store->privateRead($vv->store->dir.'/setup-key.php')."\n"; break;
@@ -44,5 +63,5 @@ switch($command) {
         echo 'Installé : '.($vv->state['installed']?'oui':'non')."\nContenus : ".count($vv->state['contents'])."\nMédias : ".count($vv->state['media'])."\n";
         foreach(['dom','mbstring','fileinfo','pdo_sqlite','gd','zip'] as $module) echo $module.' : '.(extension_loaded($module)?'OK':'ABSENT')."\n";
         break;
-    default: echo "VoilaVoila CMS\n\nphp bin/console.php doctor        Diagnostic hébergement sans écriture\nphp bin/console.php doctor --json Rapport à partager sans secret\nphp bin/console.php install-key   Afficher la clé de première installation\nphp bin/console.php status        Vérifier la configuration\nphp bin/console.php reset-owner   Réinitialiser l’accès localement\nphp bin/console.php safe-mode     Désactiver les extensions et restaurer Profil Or\n";
+    default: echo "VoilaVoila CMS\n\nphp bin/console.php doctor        Diagnostic hébergement sans écriture\nphp bin/console.php doctor --json Rapport à partager sans secret\nphp bin/console.php forms:notifications  Traiter les notifications Forms\nphp bin/console.php forms:purge --confirm=PURGE  Purger les demandes expirées\nphp bin/console.php wp:quarantine:status  État du moteur facultatif\nphp bin/console.php wp:quarantine:prepare ZIP < private-db.json\nphp bin/console.php wp:plugin:wrap ZIP\nphp bin/console.php wp:theme:wrap ZIP\nphp bin/console.php install-key   Afficher la clé de première installation\nphp bin/console.php status        Vérifier la configuration\nphp bin/console.php reset-owner   Réinitialiser l’accès localement\nphp bin/console.php safe-mode     Désactiver les extensions et restaurer Profil Or\n";
 }

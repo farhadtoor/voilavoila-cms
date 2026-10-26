@@ -42,6 +42,8 @@ def unsafe_source_path(name):
         return True
     if any(part in {'.git', '.venv', 'node_modules', '__pycache__'} for part in path.parts):
         return True
+    if path.parts[0] in {'wordpress','wp-quarantine'} or path.name in {'engine-config.php','wp-connector.php','wordpress-verification.php'} or path.suffix in {'.sql'} or name.endswith('.sql.gz') or path.parts[0].startswith('wordpress-') and path.suffix=='.zip':
+        return True
     if path.parts[0] in {'dist', 'build', 'test-results', 'playwright-report', 'files'}:
         return True
     if path.parts[0] == 'storage' and name not in {'storage/.htaccess', 'storage/index.php'}:
@@ -64,6 +66,10 @@ def validate_files(files):
             raise ReleaseError('Release entry too large: ' + name)
     if len(files) > MAX_FILES or sum(map(len, files.values())) > MAX_TOTAL_BYTES:
         raise ReleaseError('Release exceeds bounded size')
+    if tuple(map(int, version_of(files).split('.'))) >= (1,3,0):
+        required_130={'wp.php','wp-assets.php','assets/voilavoila-logo.png','assets/france.svg','assets/wp-bridge.js','content/plugins/forms/Forms.php','content/plugins/forms/Admin.php','content/plugins/forms/plugin.php','content/plugins/forms/cms.json','content/plugins/wp-runtime/Runtime.php','content/plugins/wp-runtime/FastCGI.php','content/plugins/wp-runtime/plugin.php','content/plugins/wp-runtime/cms.json'}
+        required_130.update('content/plugins/wp-runtime/engine/'+n+'.template.txt' for n in ['Gateway','Bridge','Authorize','CLI','Console','wp-config'])
+        if required_130-files.keys(): raise ReleaseError('Missing 1.3 release files: '+', '.join(sorted(required_130-files.keys())))
     # A partial copy of the core must fail before an installation is attempted.
     bootstrap = files['core/bootstrap.php'].decode('utf-8')
     for dependency in re.findall(r"require\s+__DIR__\s*\.\s*'/([^']+\.php)'", bootstrap):

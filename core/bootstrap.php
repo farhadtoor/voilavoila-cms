@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 define('VV_ROOT', dirname(__DIR__));
-define('VV_VERSION', '1.2.1');
+define('VV_VERSION', '1.3.0');
 if (PHP_VERSION_ID < 80300 || !extension_loaded('dom') || !extension_loaded('mbstring') || !extension_loaded('fileinfo') || !extension_loaded('pdo_sqlite')) {
     http_response_code(503); header('Content-Type: text/plain; charset=utf-8');
     $message='VoilaVoila CMS demande PHP 8.3+ et les extensions DOM, mbstring, fileinfo et pdo_sqlite. Consultez INSTALLATION.html.';
@@ -23,6 +23,7 @@ function base_path(): string { $b=str_replace('\\','/',dirname($_SERVER['SCRIPT_
 function url(string $file = '', array $args = []): string { return base_path().'/'.ltrim($file,'/') . ($args ? '?'.http_build_query($args,'','&',PHP_QUERY_RFC3986) : ''); }
 function lang(): string { global $vv; return in_array(val($_GET,'lang'),['fr','en'],true) ? val($_GET,'lang') : ($vv->state['settings']['language'] ?? 'fr'); }
 function t(string $fr, string $en): string { return lang()==='en' ? $en : $fr; }
+function vv_brand(): string { return '<span class="vv-brand-signature"><img class="vv-wordmark" src="'.e(url('assets/voilavoila-logo.png')).'" width="28" height="28" alt="VoilaVoila"><strong aria-hidden="true">VoilaVoila</strong><span class="vv-origin"><img src="'.e(url('assets/france.svg')).'" width="18" height="12" alt="France">'.e(t('Conception et ingénierie françaises','French design and engineering')).'</span></span>'; }
 function admin_url(string $view='dashboard', array $args=[]): string { return url('admin.php', array_merge(['view'=>$view,'lang'=>lang()],$args)); }
 function redirect(string $target): never { header('Location: '.$target,true,303); exit; }
 function csrf_field(): string { return '<input type="hidden" name="csrf" value="'.e(\VV\Security::csrf()).'">'; }
@@ -42,6 +43,7 @@ set_exception_handler(function (Throwable $err) {
     \VV\Logger::error('exception',$err->getMessage(),$err->getFile(),$err->getLine());
     fail_page('Une erreur est survenue. Consultez le journal error.txt dans votre stockage privé.',500);
 });
+\VV\Security::nativeOrigin();
 \VV\Security::headers(defined('VV_ADMIN'));
 $vvStorage=getenv('VV_STORAGE_PATH') ?: VV_ROOT.'/storage';
 \VV\Logger::init($vvStorage);

@@ -2,9 +2,15 @@
 
 **Un petit CMS personnel auto-hébergé en PHP + SQLite, pour un propriétaire unique.** Publiez un profil, des pages et des articles ; gérez les médias ; ajoutez des thèmes et des extensions natifs.
 
-[English](README.md) · [Installer](docs/fr/installation.md) · [Mettre à jour](MISE-A-JOUR-1.2.1.md) · [Contribuer](CONTRIBUTING.fr.md) · [Versions](https://github.com/farhadtoor/voilavoila-cms/releases)
+[English](README.md) · [Installer](docs/fr/installation.md) · [Mettre à jour](MISE-A-JOUR-1.3.0.md) · [Contribuer](CONTRIBUTING.fr.md) · [Versions](https://github.com/farhadtoor/voilavoila-cms/releases)
 
-La version actuelle du moteur est la **1.2.1**. La branche `main` contient aussi la documentation bilingue et les vérifications de développement. Les instantanés historiques 1.0.0 et 1.1.0 restent documentés séparément.
+La version actuelle du moteur est la **1.3.0**. La branche `main` contient aussi la documentation bilingue et les vérifications de développement. Les instantanés historiques 1.0.0 et 1.1.0 restent documentés séparément.
+
+## Nouveautés 1.3.0
+
+Forms et boîte privée SQLite, notifications différées et exports. Logo VoilaVoila original, drapeau français et signature de conception. WordPress Runtime facultatif et expérimental, séparé du CMS.
+
+[Forms](docs/FORMS.fr.md) · [Runtime](docs/WP-RUNTIME.fr.md) · [GitHub FR/EN](GITHUB-v1.3.0-FR-EN.md) · [Mise à jour](MISE-A-JOUR-1.3.0.md)
 
 ## Nouveautés 1.2.1
 

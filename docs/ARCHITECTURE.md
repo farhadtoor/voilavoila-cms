@@ -55,3 +55,7 @@ La version mutualisée dépend de PDO SQLite, sans serveur MySQL. Elle fonctionn
 `contents` comprend les identifiants, type `post`/`page`, slug unique, statut, titres/résumés/corps FR/EN, date de publication, dates de création/modification, couverture, indicateurs, ordre, version, tags et métadonnées complémentaires. Les index portent sur publication et modification. `revisions` référence le contenu et utilise une suppression en cascade. `cms_state` transporte les autres données applicatives dans un JSON distinct des contenus.
 
 Le mode de journalisation SQLite est DELETE, avec synchronisation FULL, clés étrangères et délai d’attente de cinq secondes. Les requêtes utilisent des paramètres. La migration est transactionnelle et ne se rejoue pas si la base contient déjà son état. Les anciennes données sont conservées ; une migration interrompue peut être réessayée.
+
+## 1.3
+
+Native content/media architecture is unchanged. Optional Forms keeps private submissions in SQLite plugin data. Optional WordPress Runtime uses a separate private process and SQL database, with no WordPress includes in the CMS. [Runtime](WP-RUNTIME.fr.md) · [Forms](FORMS.fr.md).
