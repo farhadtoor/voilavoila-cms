@@ -5,6 +5,6 @@
   "description": "Development-only browser checks; Node is not required by the hosted CMS",
   "devDependencies": {
     "jsqr": "1.4.0",
-    "playwright": "1.62.1"
+    "playwright": "1.64.1"
   }
 }
