@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 if(PHP_SAPI!=='cli') { http_response_code(404); exit; }
+if(($argv[1]??'')==='benchmark'){require __DIR__.'/benchmark.php';exit;}
 // Preflight also works before installation and never opens the real database.
 if(($argv[1] ?? '')==='doctor') {
     define('VV_ROOT',dirname(__DIR__));
@@ -17,6 +18,13 @@ require dirname(__DIR__).'/core/bootstrap.php';
 use VV\Security; use VV\Store;
 $command=$argv[1] ?? 'help';
 switch($command) {
+    case 'health':
+        $vv->bootPlugins();echo json_encode(\VV\Operations::health($vv),JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR).PHP_EOL;break;
+    case 'maintenance:run':
+        $vv->bootPlugins();$budget=10;$limit=3;
+        foreach(array_slice($argv,2) as $argument){if(preg_match('/^--budget=(\d+)$/D',$argument,$m))$budget=(int)$m[1];elseif(preg_match('/^--limit=(\d+)$/D',$argument,$m))$limit=(int)$m[1];else throw new \VV\Failure('Use --budget=1..30 --limit=1..10.');}
+        if(!$vv->state['installed'])throw new \VV\Failure('Install the CMS first.');
+        $result=\VV\Operations::run($vv,$budget,$limit);echo json_encode($result,JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR).PHP_EOL;if(!$result['passed'])exit(1);break;
     case 'forms:notifications': case 'forms:purge':
         if(!in_array('forms',$vv->state['plugins'],true)) throw new \VV\Failure('Activate Forms first.');
         $vv->bootPlugins();
@@ -63,5 +71,5 @@ switch($command) {
         echo 'Installé : '.($vv->state['installed']?'oui':'non')."\nContenus : ".count($vv->state['contents'])."\nMédias : ".count($vv->state['media'])."\n";
         foreach(['dom','mbstring','fileinfo','pdo_sqlite','gd','zip'] as $module) echo $module.' : '.(extension_loaded($module)?'OK':'ABSENT')."\n";
         break;
-    default: echo "VoilaVoila CMS\n\nphp bin/console.php doctor        Diagnostic hébergement sans écriture\nphp bin/console.php doctor --json Rapport à partager sans secret\nphp bin/console.php forms:notifications  Traiter les notifications Forms\nphp bin/console.php forms:purge --confirm=PURGE  Purger les demandes expirées\nphp bin/console.php wp:quarantine:status  État du moteur facultatif\nphp bin/console.php wp:quarantine:prepare ZIP < private-db.json\nphp bin/console.php wp:plugin:wrap ZIP\nphp bin/console.php wp:theme:wrap ZIP\nphp bin/console.php install-key   Afficher la clé de première installation\nphp bin/console.php status        Vérifier la configuration\nphp bin/console.php reset-owner   Réinitialiser l’accès localement\nphp bin/console.php safe-mode     Désactiver les extensions et restaurer Profil Or\n";
+    default: echo "VoilaVoila CMS\n\nphp bin/console.php health        Diagnostic local complet\nphp bin/console.php maintenance:run --budget=10 --limit=3  Maintenance/cron\nphp bin/console.php doctor        Diagnostic hébergement sans écriture\nphp bin/console.php doctor --json Rapport à partager sans secret\nphp bin/console.php forms:notifications  Traiter les notifications Forms\nphp bin/console.php forms:purge --confirm=PURGE  Purger les demandes expirées\nphp bin/console.php wp:quarantine:status  État du moteur facultatif\nphp bin/console.php wp:quarantine:prepare ZIP < private-db.json\nphp bin/console.php wp:plugin:wrap ZIP\nphp bin/console.php wp:theme:wrap ZIP\nphp bin/console.php install-key   Afficher la clé de première installation\nphp bin/console.php status        Vérifier la configuration\nphp bin/console.php reset-owner   Réinitialiser l’accès localement\nphp bin/console.php safe-mode     Désactiver les extensions et restaurer Profil Or\n";
 }

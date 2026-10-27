@@ -70,7 +70,10 @@ final class App {
         $folder=VV_ROOT.'/content/themes/'.$this->theme();
         $file=is_file($folder.'/'.$kind.'.php') ? $folder.'/'.$kind.'.php' : $folder.'/index.php';
         if(!is_file($file)) $file=VV_ROOT.'/content/themes/profil-or/index.php';
-        $app=$this; extract($context,EXTR_SKIP); require $file;
+        $app=$this; extract($context,EXTR_SKIP); ob_start();
+        try { require $file; $html=ob_get_clean(); }
+        catch(\Throwable $e) { ob_end_clean(); throw $e; }
+        echo Metadata::rewrite($html,$this,$context['current']??null,$context);
     }
     public static function seed(string $name,string $email,string $password): array {
         $id=bin2hex(random_bytes(12)); $page=bin2hex(random_bytes(12)); $now=gmdate('c');

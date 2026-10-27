@@ -8,6 +8,9 @@ RewriteRule ^assets/(?:ui|mod|core|admin|media)/ wp-assets.php [L,QSA]
 RewriteRule ^(?:core|storage|bin|sdk|docs|tests|tools|files)(?:/|$) - [F,L,NC]
 RewriteRule ^content/(?:plugins|themes)/.*\.php$ - [F,L,NC]
 RewriteRule (^|/)\.(?!well-known/) - [F,L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L,QSA]
 </IfModule>
 <FilesMatch "(?i)(^\.env|\.bak$|\.log$|\.sql$|\.xml$|\.md$|^Dockerfile$|^compose\.yaml$|^Lancer-Mac\.command$)">
 Require all denied

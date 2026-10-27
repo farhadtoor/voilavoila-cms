@@ -1,0 +1,12 @@
+{
+  "api": 1,
+  "id": "operations-example",
+  "type": "plugin",
+  "name": "SDK · Maintenance notes",
+  "version": "1.0.0",
+  "requires_cms": "1.4.0",
+  "requires_php": "8.3",
+  "author": "VoilaVoila / Farhad TOOR",
+  "license": "MIT",
+  "description": "Optional API 1 example consuming the versioned maintenance event. No network requests."
+}

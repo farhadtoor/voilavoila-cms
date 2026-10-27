@@ -73,6 +73,9 @@ def validate_files(files):
     if tuple(map(int, version_of(files).split('.'))) >= (1,3,1):
         required_131={'core/SecondFactor.php','content/plugins/otp/Auth.php','content/plugins/otp/Totp.php','content/plugins/otp/Admin.php','content/plugins/otp/cms.json','content/plugins/otp/plugin.php','content/plugins/otp/otp.js','content/plugins/otp/vendor/qrcodegen.js','content/plugins/wp-runtime/Bundled.php','content/plugins/wp-runtime/engine/Sync.template.txt'}
         if required_131-files.keys(): raise ReleaseError('Missing authentication/engine release files: '+', '.join(sorted(required_131-files.keys())))
+    if tuple(map(int, version_of(files).split('.'))) >= (1,4,0):
+        required_140={'core/Metadata.php','core/Redirects.php','core/Migration.php','core/MigrationView.php','core/RedirectsView.php','core/Operations.php','core/HealthView.php','assets/brand.css','bin/benchmark.php','content/plugins/seo/fields.php','content/plugins/seo/admin.php','sdk/operations-example.zip','tests/release_140.py','tests/protocol_140.php','tests/browser_140.cjs'}
+        if required_140-files.keys(): raise ReleaseError('Missing 1.4 release files: '+', '.join(sorted(required_140-files.keys())))
     # A partial copy of the core must fail before an installation is attempted.
     bootstrap = files['core/bootstrap.php'].decode('utf-8')
     for dependency in re.findall(r"require\s+__DIR__\s*\.\s*'/([^']+\.php)'", bootstrap):
