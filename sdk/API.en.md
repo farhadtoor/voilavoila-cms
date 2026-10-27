@@ -127,3 +127,9 @@ The guest comment form uses `Security::guestToken` / `guestPost` separately from
 ## API 1 additions in 1.3 / Ajouts 1.3
 
 `$app->currentContent()` exposes content only during `$app->body()` rendering; shortcode callbacks still take zero arguments. `backup_restore_data_v1` filters validated editorial backup data before any restore writes. Active plugins must reject incompatible schemas. `forms_received_v1` runs after commit with identifiers only; `forms_transport_v1` is a trusted deferred transport returning `accepted`, `failed` or `unknown`. See [Forms](../docs/FORMS.md).
+
+## CMS 1.4.0
+
+[Versioned contracts / Contrats versionnés](../docs/MILESTONE-4-FR-EN.md) · [Installable maintenance example / Exemple installable](operations-example/README.md).
+
+Register value filters with `vv_action`; `vv_filter` applies them. `content_record_v1` runs inside the native transaction and must not start another transaction or external I/O. `maintenance_completed_v1` runs after commit; delivery is best effort. / Déclarez les filtres avec `vv_action`, gardez les callbacks de valeur purs et dédupliquez les événements avec leur identifiant.

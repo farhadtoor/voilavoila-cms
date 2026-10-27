@@ -6,7 +6,23 @@ defined('VV_ROOT') || exit;
 /** WXR is parsed as data. No network, WordPress runtime or serialized PHP. */
 final class WordPress {
     public static function run(App $app,array $file,bool $publish,array $uploads=[],array $options=[]): array {
-        $path=Tools::uploaded($file,8*1024*1024); $xml=file_get_contents($path);
+        $xml=file_get_contents(Tools::uploaded($file,8*1024*1024));
+        $uploadPath=($uploads['error']??UPLOAD_ERR_NO_FILE)===UPLOAD_ERR_NO_FILE?'':Tools::uploaded($uploads,64*1024*1024);
+        return self::parse($app,$xml,$publish,$uploadPath,$options);
+    }
+    /** Internal staged bytes, never a path supplied by a web request. */
+    public static function staged(App $app,string $xml,bool $publish,string $zipBytes,array $options): array {
+        if(strlen($xml)>8*1048576||strlen($zipBytes)>64*1048576)throw new Failure('Import trop volumineux.',413);
+        $tmp='';
+        try { if($zipBytes!==''){$tmp=tempnam(sys_get_temp_dir(),'vv-import-');chmod($tmp,0600);if(file_put_contents($tmp,$zipBytes)!==strlen($zipBytes))throw new Failure('Copie de l’import impossible.',503);}return self::parse($app,$xml,$publish,$tmp,$options); }
+        finally {if($tmp!=='')@unlink($tmp);}
+    }
+    public static function fingerprint(array $state): string {
+        $contents=[];foreach($state['contents'] as $id=>$c)$contents[$id]=[$c['slug'],$c['version'],$c['status'],$c['publish_at'],$c['wp_key']??'',$c['wp_source']??'',$c['wp_id']??'',$c['wp_link']??''];
+        $media=[];foreach($state['media'] as $id=>$m)$media[$id]=[$m['sha256'],$m['public'],$m['wp_key']??''];
+        ksort($contents);ksort($media);return hash('sha256',json_encode([$contents,$media,$state['plugins']],JSON_THROW_ON_ERROR));
+    }
+    private static function parse(App $app,string $xml,bool $publish,string $uploadPath,array $options): array {
         $doc=Security::xmlDocument($xml,8*1024*1024); $xp=new \DOMXPath($doc); $ns='';
         foreach($doc->getElementsByTagName('channel')->item(0)?->childNodes ?? [] as $n) if($n instanceof \DOMElement && $n->localName==='wxr_version' && preg_match('~^http://wordpress.org/export/1\.[012]/$~D',$n->namespaceURI ?? '')) $ns=$n->namespaceURI;
         if(!$ns || !$doc->documentElement || $doc->documentElement->tagName!=='rss') throw new Failure('Choisissez un export WordPress WXR 1.0, 1.1 ou 1.2.');
@@ -65,8 +81,8 @@ final class WordPress {
         }
         if(!$posts) throw new Failure('Cet export ne contient aucune page ou article importable.');
         $zip=null; $entries=[];
-        if(($uploads['error'] ?? UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_NO_FILE) {
-            Tools::zip(); $up=Tools::uploaded($uploads,64*1024*1024); $zip=new \ZipArchive();
+        if($uploadPath!=='') {
+            Tools::zip(); $up=$uploadPath; $zip=new \ZipArchive();
             if($zip->open($up,\ZipArchive::RDONLY | \ZipArchive::CHECKCONS)!==true) throw new Failure('ZIP uploads illisible.');
             try { $entries=Tools::zipEntries($zip,2200,64*1024*1024); }
             catch(\Throwable $e) { $zip->close(); throw $e; }
@@ -84,9 +100,11 @@ final class WordPress {
                 $media[$pid]=$m; $binaries[$pid]=$bytes;
             }
         } finally { if($zip) $zip->close(); }
+        if(!empty($options['preview']))return self::plan($app,$posts,$media,$report);
         Tools::snapshot($app); $written=[];
         try {
             return $app->store->change(function(&$s) use($app,$posts,$media,$binaries,$attachments,$thumbnail,$comments,$options,&$report,$warn,&$written,$source) {
+                if(isset($options['expected_fingerprint'])&&!hash_equals($options['expected_fingerprint'],self::fingerprint($s)))throw new Failure('Le site a changé. Relancez la prévisualisation de l’import.',409);
                 $postMap=[]; $mediaMap=[]; $slugs=[]; $known=[]; $knownMedia=[];
                 foreach($s['contents'] as $c) { $slugs[$c['slug']]=true; if(isset($c['wp_key'])) $known[$c['wp_key']]=$c['id']; }
                 foreach($s['media'] as $m) if(isset($m['wp_key'])) $knownMedia[$m['wp_key']]=$m;
@@ -140,6 +158,24 @@ final class WordPress {
                 return $report;
             });
         } catch(\Throwable $e) { foreach($written as $p) @unlink($p); throw $e; }
+    }
+    private static function plan(App $app,array $posts,array $media,array $report): array {
+        $state=$app->store->read();$known=[];$slugs=[];$knownMedia=[];
+        foreach($state['contents'] as $c){$slugs[$c['slug']]=true;if(isset($c['wp_key']))$known[$c['wp_key']]=$c;}
+        foreach($state['media'] as $m)if(isset($m['wp_key']))$knownMedia[$m['wp_key']]=$m;
+        $report['preview']=true;$report['state_fingerprint']=self::fingerprint($state);$report['planned']=[];$report['collisions']=0;
+        foreach($posts as $pid=>$c){$existing=$known[$c['wp_key']]??$known[$c['wp_legacy_key']]??null;$slug=$existing['slug']??$c['slug'];$base=$slug;$n=2;
+            if(!$existing)while(isset($slugs[$slug]))$slug=substr($base,0,90).'-'.$n++;
+            $collision=!$existing&&$slug!==$c['slug'];$report['collisions']+=(int)$collision;$slugs[$slug]=true;
+            $report['planned'][]=['wordpress_id'=>(string)$pid,'title'=>$c['title_fr'],'type'=>$c['type'],'status'=>$existing['status']??$c['status'],'action'=>$existing?'keep':'create','slug'=>$slug,'collision'=>$collision,'from'=>$c['wp_link'],'to'=>\url('index.php',['p'=>$slug,'lang'=>\lang()])];
+            if($existing)$report['duplicates']++;else $report['imported']++;
+        }
+        foreach($media as $pid=>$m)if(isset($knownMedia[$m['wp_key']])){
+            if(hash_equals($knownMedia[$m['wp_key']]['sha256'],$m['sha256']))$report['media_reused']++;
+            else{$report['warning_count']++;if(count($report['warnings'])<100)$report['warnings'][]='Média WordPress modifié : ancien fichier conservé (ID '.$pid.').';}
+        }else $report['media_imported']++;
+        $report['note']='Preview only. No content, media, comments or redirect changes. Existing imported content will be preserved. Rules require a separate owner approval.';
+        return $report;
     }
     private static function relative(string $p): bool { return $p!=='' && strlen($p)<=200 && !preg_match('~[\x00-\x1f\x7f\\\\:]|^/|(?:^|/)\.{1,2}(?:/|$)|//~',$p); }
     private static function source(string $url): string {

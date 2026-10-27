@@ -95,7 +95,7 @@ final class Tools {
             $app->store->change(function(&$s) use($app,$tmp) {
                 $zip=new \ZipArchive(); if($zip->open($tmp,\ZipArchive::OVERWRITE)!==true) throw new Failure('Sauvegarde impossible.',503);
                 try {
-                    $data=['format'=>'voilavoila-cms','schema'=>2,'created_at'=>gmdate('c'),'version'=>VV_VERSION,'settings'=>$s['settings'],'contents'=>$s['contents'],'media'=>$s['media'],'plugin_data'=>$s['plugin_data']];
+                    $data=['format'=>'voilavoila-cms','schema'=>2,'created_at'=>gmdate('c'),'version'=>VV_VERSION,'settings'=>$s['settings'],'contents'=>$s['contents'],'media'=>$s['media'],'plugin_data'=>$s['plugin_data'],'redirects'=>$s['redirects']??[]];
                     $json=json_encode($data,JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
                     if(strlen($json)>8*1024*1024) throw new Failure('Export limité à 8 Mo de données éditoriales.',413);
                     $zip->addFromString('data.json',$json); $total=strlen($json);
@@ -113,8 +113,8 @@ final class Tools {
     public static function snapshot(App $app): string {
         $tmp=self::backup($app); $id=gmdate('Ymd-His').'-'.bin2hex(random_bytes(4));
         try { $app->store->privateWrite($app->store->dir.'/backups/'.$id.'.php',file_get_contents($tmp)); } finally { unlink($tmp); }
-        $files=glob($app->store->dir.'/backups/*.php'); sort($files);
-        foreach(array_slice($files,0,max(0,count($files)-3)) as $p) unlink($p);
+        $files=Operations::points($app); $keep=Operations::config($app)['backups_keep'];
+        foreach(array_slice($files,$keep) as $p) unlink($p);
         return $id;
     }
     public static function restore(App $app,array $file): void {
@@ -146,11 +146,13 @@ final class Tools {
                 if(preg_match('/^[a-f0-9]{64}$/D',\val($c,'wp_key'))) $row['wp_key']=$c['wp_key'];
                 foreach(['wp_source','wp_id','wp_link'] as $key) if(is_string($c[$key] ?? null) && strlen($c[$key])<=1000) $row[$key]=$c[$key];
                 if(isset($c['comments_open'])) $row['comments_open']=$c['comments_open']===true;
+                if(is_array($c['seo']??null))$row['seo']=Metadata::clean($c['seo']);
                 foreach(array_slice(is_array($c['tags'] ?? null)?$c['tags']:[],0,12) as $tag) if(is_string($tag)) $row['tags'][]=Content::text($tag,40);
                 $cover=\val($c,'cover'); if(isset($media[$cover]) && $media[$cover]['public'] && str_starts_with($media[$cover]['mime'],'image/')) $row['cover']=$cover;
                 $contents[$id]=$row;
             }
             $settings=self::settings($data['settings'],$app->state['settings'],$media);
+            $settings['operations']=Operations::normalize(is_array($data['settings']['operations']??null)?$data['settings']['operations']:[]);
             $theme=\val($data['settings'],'theme'); $settings['theme']=isset($app->packages('theme')[$theme])?$theme:'profil-or';
             if(!isset($contents[$settings['home_page']])) $settings['home_page']='';
             $data=\vv_filter('backup_restore_data_v1',$data);
@@ -161,7 +163,7 @@ final class Tools {
                     if(isset($s['media'][$id]) && !hash_equals($s['media'][$id]['sha256'],$m['sha256'])) throw new Failure('Conflit de média. Restaurez dans une installation séparée.',409);
                     $app->store->writeMedia($m,$zip->getFromName($mediaEntries[$id]));
                 }
-                $s['contents']=$contents; $s['media']=$media; $s['settings']=$settings; $s['plugin_data']=$data['plugin_data']; unset($s['imports']);
+                $s['contents']=$contents; $s['media']=$media; $s['settings']=$settings; $s['plugin_data']=$data['plugin_data']; $s['redirects']=Redirects::validate(is_array($data['redirects']??null)?$data['redirects']:[],$contents); unset($s['imports']);
                 Store::log($s,'backup_restored');
             });
         } catch(\JsonException $e) { throw new Failure('JSON de sauvegarde illisible.'); }

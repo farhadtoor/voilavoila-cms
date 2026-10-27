@@ -17,3 +17,7 @@ Les dossiers `en` et `fr` contiennent les guides bilingues. Les rapports `verifi
 ## 1.3.1
 
 [OTP FR](OTP.fr.md) · [OTP EN](OTP.md) · [Installation FR/EN](../EXTENSIONS-ENGINE-OTP-FR-EN.md).
+
+## 1.4.0 — J4 + J5
+
+[Release FR/EN](../RELEASE-1.4.0-FR-EN.md) · [Upgrade FR/EN](../UPGRADE-1.4.0-FR-EN.md) · [GitHub](../GITHUB-1.4.0-FR-EN.md) · [Scope](MILESTONE-4-FR-EN.md) · [Pilot](PILOT-1.4.0-FR-EN.md).

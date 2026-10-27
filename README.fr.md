@@ -2,9 +2,15 @@
 
 **Un petit CMS personnel auto-hébergé en PHP + SQLite, pour un propriétaire unique.** Publiez un profil, des pages et des articles ; gérez les médias ; ajoutez des thèmes et des extensions natifs.
 
-[English](README.md) · [Installer](docs/fr/installation.md) · [Mettre à jour](EXTENSIONS-ENGINE-OTP-FR-EN.md) · [Contribuer](CONTRIBUTING.fr.md) · [Versions](https://github.com/farhadtoor/voilavoila-cms/releases)
+[English](README.md) · [Installer](docs/fr/installation.md) · [Mettre à jour](UPGRADE-1.4.0-FR-EN.md) · [Contribuer](CONTRIBUTING.fr.md) · [Versions](https://github.com/farhadtoor/voilavoila-cms/releases)
 
-La version actuelle du moteur est la **1.3.1**. La branche `main` contient aussi la documentation bilingue et les vérifications de développement. Les instantanés historiques 1.0.0 et 1.1.0 restent documentés séparément.
+La version actuelle du moteur est la **1.4.0**. La branche `main` contient aussi la documentation bilingue et les vérifications de développement. Les instantanés historiques 1.0.0 et 1.1.0 restent documentés séparément.
+
+## Nouveautés 1.4.0
+
+J4 et le travail technique de J5 sont regroupés : SEO bilingue, analyse WXR et redirections approuvées, santé locale, rétention, maintenance planifiée avec verrou, benchmark et kit SDK/pilote. La barre latérale se replie et mémorise le choix ; VoilaVoila ! utilise le dégradé doré/blanc. Propriétaire unique, SQLite et API 1 conservés.
+
+[Upgrade FR/EN](UPGRADE-1.4.0-FR-EN.md) · [Release FR/EN](RELEASE-1.4.0-FR-EN.md) · [GitHub FR/EN](GITHUB-1.4.0-FR-EN.md).
 
 ## Extensions 1.3.1
 

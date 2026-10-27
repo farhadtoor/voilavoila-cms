@@ -1,5 +1,13 @@
 # Roadmap / Feuille de route
 
+## 1.4.0 — J4 and technical J5 combined / J4 et J5 technique regroupés
+
+Bilingual SEO 1.1, single metadata resolver, WXR review and approved redirects, private health reporting, retention and locked bounded maintenance, synthetic benchmark and SDK/pilot kit. Collapsible admin and VoilaVoila ! gold/white brand. / SEO bilingue, résolveur unique, import avec analyse, redirections approuvées, santé, rétention, maintenance, benchmark et kit SDK/pilote.
+
+[Release / Livraison](RELEASE-1.4.0-FR-EN.md) · [Upgrade / Mise à jour](UPGRADE-1.4.0-FR-EN.md) · [Scope / Périmètre](docs/MILESTONE-4-FR-EN.md).
+
+The 1.5 technical work has been pulled into 1.4.0; it is not a second future promise. Live hosting and volunteer pilots require actual participant evidence. / Le travail technique prévu en 1.5 est intégré en 1.4.0 ; les preuves hébergeurs et volontaires restent à recueillir.
+
 ## 1.3.1 — optional Engine and OTP
 
 WordPress themes/plugins execution with WooCommerce integration evidence, native editorial copies, and TOTP authentication with local QR/recovery codes. Hosting, payment gateways and full commerce migrations still need site-specific qualification. / Moteur WordPress facultatif et authentification TOTP, avec qualification hébergeur/paiement à effectuer par site.
@@ -24,7 +32,7 @@ Secure documents, moderated guest comments and offline WordPress migration. / Do
 
 1. Confirm the new hosted CI and complete the hosting pilots. / Confirmer la nouvelle CI et les pilotes.
 2. Qualify Forms mail and optional Runtime on real infrastructure. / Qualifier le courrier Forms et le Runtime sur infrastructure réelle.
-3. 1.4: extend existing SEO and editorial migration tools. / Étendre le SEO et la migration éditoriale.
-4. 1.5: operations, retention, diagnostics and community pilots driven by feedback. / Exploitation et communauté selon les retours.
+3. Run the five-site voluntary pilot and collect repeat usage/support evidence. / Réaliser le pilote volontaire de cinq sites et recueillir les retours.
+4. Scope subsequent products only from demonstrated needs. / Cadrer les produits suivants selon les besoins démontrés.
 
 Keep one owner, API 1 and optional business plugins. Commerce, licensing, payments, public accounts, marketplace and hosted services require separate scope. / Conserver propriétaire unique, API 1 et modules facultatifs ; cadrer séparément les produits suivants.

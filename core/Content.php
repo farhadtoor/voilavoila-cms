@@ -95,8 +95,9 @@ final class Content {
             $revisions=$old['revisions'] ?? [];
             if($old) { unset($old['revisions']); $revisions[]=$old; }
             $c['revisions']=array_slice($revisions,-15); $c['version']=$version+1;
-            foreach(['wp_key','wp_source','wp_id','wp_link','comments_open'] as $key) if(isset($old[$key])) $c[$key]=$old[$key];
+            foreach(['wp_key','wp_source','wp_id','wp_link','comments_open','seo'] as $key) if(isset($old[$key])) $c[$key]=$old[$key];
             if(isset($data['comments_config'])) $c['comments_open']=isset($data['comments_open']);
+            $c=\vv_filter('content_record_v1',$c,$old,$data);
             $c['created_at']=$old['created_at'] ?? gmdate('c'); $c['updated_at']=gmdate('c');
             $s['contents'][$id]=$c; Store::log($s,'content_saved',$c['title_fr'] ?: $c['title_en']);
         });

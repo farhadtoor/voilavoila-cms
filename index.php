@@ -14,7 +14,8 @@ if($vv->state['settings']['maintenance'] && !$owner) {
 }
 $vv->bootPlugins();
 vv_do('public_route',$vv);
-$current=null; $notFound=false; $query=Content::text(val($_GET,'q'),120); $slug=val($_GET,'p');
+\VV\Redirects::dispatch($vv);
+$current=null; $notFound=\VV\Redirects::unmatchedPath(); $query=Content::text(val($_GET,'q'),120); $slug=val($_GET,'p');
 if($preview!=='') {
     if($owner) $current=$vv->state['contents'][$preview] ?? null;
     if(!$current) $notFound=true;

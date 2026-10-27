@@ -1,5 +1,10 @@
 # Changelog / Historique
 
+## 1.4.0
+
+Combines roadmap J4 and technical J5: native SEO metadata and bilingual sitemap, WXR review, approved redirects, health/retention/locked maintenance, benchmark and SDK/pilot kit. Adds a persistent collapsible admin icon rail and VoilaVoila ! gold/white branding. SQLite schema 2 and API 1 retained; existing owner/OTP/data preserved. See RELEASE-1.4.0-FR-EN.md.
+
+
 ## 1.3.1
 
 Add the optional authenticator enforcement hook, encrypted TOTP plugin, local QR and recovery codes. Upgrade optional WordPress Engine to 0.2 with offline official inputs, large plugin wrapping, full compatibility profile, native editorial copies and WooCommerce integration coverage. Native SQLite schema and media formats are unchanged.

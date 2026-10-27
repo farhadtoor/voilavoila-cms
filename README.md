@@ -2,9 +2,15 @@
 
 **A small, self-hosted PHP + SQLite CMS for one owner.** Publish a personal profile, pages and posts; manage media; extend it with native themes and plugins.
 
-[Français](README.fr.md) · [Install](docs/en/installation.md) · [Upgrade](EXTENSIONS-ENGINE-OTP-FR-EN.md) · [Contribute](CONTRIBUTING.md) · [Releases](https://github.com/farhadtoor/voilavoila-cms/releases)
+[Français](README.fr.md) · [Install](docs/en/installation.md) · [Upgrade](UPGRADE-1.4.0-FR-EN.md) · [Contribute](CONTRIBUTING.md) · [Releases](https://github.com/farhadtoor/voilavoila-cms/releases)
 
-The current application version is **1.3.1**. The `main` branch also includes the bilingual project documentation and development checks. Historical 1.0.0 and 1.1.0 snapshots remain documented separately.
+The current application version is **1.4.0**. The `main` branch also includes the bilingual project documentation and development checks. Historical 1.0.0 and 1.1.0 snapshots remain documented separately.
+
+## New in 1.4.0
+
+J4 and the technical J5 work are combined: bilingual SEO, WXR review and approved redirects, local health, retention, locked scheduled maintenance, benchmark and SDK/pilot kit. Desktop admin sidebar collapse remembers your preference; VoilaVoila ! uses the gold/white gradient. Single owner, SQLite and API 1 remain.
+
+[Upgrade FR/EN](UPGRADE-1.4.0-FR-EN.md) · [Release FR/EN](RELEASE-1.4.0-FR-EN.md) · [GitHub FR/EN](GITHUB-1.4.0-FR-EN.md).
 
 ## Extensions in 1.3.1
 
