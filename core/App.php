@@ -20,12 +20,15 @@ final class App {
         foreach(glob(VV_ROOT.'/content/'.$folder.'/*/cms.json') as $file) {
             $m=json_decode(file_get_contents($file),true);
             $id=basename(dirname($file));
+            if(in_array($id,['wp-runtime','wp-porter'],true))continue;
             if(is_array($m) && ($m['id'] ?? '')===$id && ($m['type'] ?? '')===$type && ($m['api'] ?? 0)===1 && preg_match('/^[a-z][a-z0-9-]{1,50}$/D',$id)) $rows[$id]=$m;
         }
         return $rows;
     }
     public function bootPlugins(bool $safe=false): void {
         if($safe) return;
+        $retired=array_intersect($this->state['plugins'],['wp-runtime','wp-porter']);
+        if($retired){$this->store->change(static function(&$s):void{$s['plugins']=array_values(array_diff($s['plugins'],['wp-runtime','wp-porter']));Store::log($s,'retired_wordpress_modules_disabled');});$this->refresh();}
         $vv=$this;
         $packages=$this->packages('plugin');
         foreach($this->state['plugins'] as $id) {

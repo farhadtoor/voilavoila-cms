@@ -1,17 +1,21 @@
 <?php
 declare(strict_types=1);
 define('VV_ROOT', dirname(__DIR__));
-define('VV_VERSION', '1.4.0');
-if (PHP_VERSION_ID < 80300 || !extension_loaded('dom') || !extension_loaded('mbstring') || !extension_loaded('fileinfo') || !extension_loaded('pdo_sqlite')) {
+define('VV_VERSION', '1.5.0');
+if (PHP_VERSION_ID < 80300 || !extension_loaded('dom') || !extension_loaded('mbstring') || !extension_loaded('fileinfo') || !extension_loaded('tokenizer') || !extension_loaded('pdo') || !extension_loaded('pdo_'.(getenv('VV_DB_DRIVER')?:'sqlite'))) {
     http_response_code(503); header('Content-Type: text/plain; charset=utf-8');
-    $message='VoilaVoila CMS demande PHP 8.3+ et les extensions DOM, mbstring, fileinfo et pdo_sqlite. Consultez INSTALLATION.html.';
+    $message='VoilaVoila CMS demande PHP 8.3+ et les extensions DOM, mbstring, fileinfo, tokenizer et le pilote PDO choisi (SQLite par défaut). Consultez INSTALLATION.html.';
     if(PHP_SAPI==='cli') { fwrite(STDERR,$message.PHP_EOL); exit(1); }
     exit($message);
 }
 ini_set('display_errors','0'); error_reporting(E_ALL); date_default_timezone_set('UTC');
+require __DIR__.'/Database.php';
 require __DIR__.'/Store.php';
 require __DIR__.'/Logger.php';
 require __DIR__.'/Hosting.php';
+require __DIR__.'/Quarantine.php';
+require __DIR__.'/Packages.php';
+require __DIR__.'/Navigation.php';
 require __DIR__.'/Media.php';
 require __DIR__.'/Security.php';
 require __DIR__.'/SecondFactor.php';

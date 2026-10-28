@@ -1,5 +1,16 @@
 # Roadmap / Feuille de route
 
+## 1.5.0 — native and editorial / native et éditorial
+
+Delivered: reviewed native package updates and rollback, private quarantine, optional fail-closed ClamAV integration, bilingual editing comparison and indicators, page navigation management, media filtering and metadata, production controller allowlists, database driver boundary and private database transfers. WordPress execution and automatic code porting removed.
+
+Livré : mises à jour et retour arrière des modules, quarantaine, connecteur antivirus, confort FR/EN, navigation, médiathèque, profils serveur stricts et couche de base interchangeable. Les orientations 1.5 et 1.6 sont réunies dans cette version. Voir RELEASE-1.5.0-FR-EN.md et VALIDATION-1.5.0.md.
+
+Next: qualify real hosting, mail delivery, real antivirus/signatures and optional database engines on target offers; collect pilot feedback. A future Pro product, public accounts, commerce, licensing and distributed/multitenant hosting remain separately scoped. / Ensuite : qualification réelle des hébergements, mails, antivirus et moteurs de base ; retours pilotes. Pro, comptes publics, commerce, licences et hébergement réparti restent à cadrer séparément.
+
+## Historical milestones / Jalons historiques
+
+
 ## 1.4.0 — J4 and technical J5 combined / J4 et J5 technique regroupés
 
 Bilingual SEO 1.1, single metadata resolver, WXR review and approved redirects, private health reporting, retention and locked bounded maintenance, synthetic benchmark and SDK/pilot kit. Collapsible admin and VoilaVoila ! gold/white brand. / SEO bilingue, résolveur unique, import avec analyse, redirections approuvées, santé, rétention, maintenance, benchmark et kit SDK/pilote.

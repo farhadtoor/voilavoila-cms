@@ -44,7 +44,7 @@ final class Security {
     public static string $nonce;
     public static function nativeOrigin(): void {
         $expected=getenv('VV_CANONICAL_ORIGIN') ?: '';
-        if($expected==='' || defined('VV_WP_PROXY') || PHP_SAPI==='cli') return;
+        if($expected==='' || PHP_SAPI==='cli') return;
         if((self::tls()?'https://':'http://').strtolower($_SERVER['HTTP_HOST'] ?? '')!==strtolower(rtrim($expected,'/'))) throw new Failure('Origine indisponible / Origin unavailable.',404);
     }
     public static function quarantinePath(string $path): string {

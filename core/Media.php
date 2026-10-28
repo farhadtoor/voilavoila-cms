@@ -66,6 +66,7 @@ final class Media {
     public static function metadata(array $m,string $bytes,bool $legacy=false): array {
         if(strlen($bytes)<1 || strlen($bytes)>8*1024*1024) throw new Failure('Fichier limité à 8 Mo.',413);
         $id=$m['id'] ?? ''; if(!is_string($id) || !preg_match('/^[a-f0-9]{24}$/D',$id)) throw new Failure('Identifiant média invalide.');
+        if(preg_match('/<\\?(?:php|=)/i',$bytes))throw new Failure('Code exécutable interdit dans un média.');
         $name=Security::documentName(is_string($m['name'] ?? null)?$m['name']:'media');
         $ext=strtolower(pathinfo($name,PATHINFO_EXTENSION)); $detected=(new \finfo(FILEINFO_MIME_TYPE))->buffer($bytes);
         if($legacy && (self::TYPES[$ext] ?? '')!==$detected) {
@@ -78,7 +79,11 @@ final class Media {
         if(!in_array($detected,$accepted,true)) throw new Failure('Extension et type MIME du fichier incompatibles.');
         if($ext==='docx' || $ext==='zip') self::archive($bytes,$ext==='docx');
         elseif($ext==='csv') self::csv($bytes);
-        elseif($ext==='pdf') { if(!str_starts_with($bytes,'%PDF-')) throw new Failure('PDF invalide.'); }
+        elseif($ext==='pdf') {
+            if(!preg_match('/^%PDF-[12]\\.[0-9]/',$bytes)||!str_contains(substr($bytes,-2048),'%%EOF'))throw new Failure('Structure PDF invalide.');
+            $names=preg_replace_callback('/#([a-fA-F0-9]{2})/',fn($m)=>chr(hexdec($m[1])),$bytes);
+            if(preg_match('~/(?:JavaScript|JS|OpenAction|AA|Launch|EmbeddedFiles|RichMedia|XFA)\\b~i',$names))throw new Failure('Actions, scripts ou pièces jointes PDF interdits.');
+        }
         else {
             $info=@getimagesizefromstring($bytes);
             if(!$info || ($info['mime'] ?? '')!==$mime || $info[0]>6000 || $info[1]>6000 || $info[0]*$info[1]>8000000) throw new Failure('Image invalide ou trop grande : 8 mégapixels et 6 000 px maximum.');
@@ -92,12 +97,21 @@ final class Media {
         return array_merge($m,['id'=>$id,'name'=>$name,'mime'=>$mime,'extension'=>$ext,'stored_name'=>$id.'.'.$ext,'size'=>strlen($bytes),'sha256'=>hash('sha256',$bytes),'public'=>!empty($m['public']),'alt'=>Content::text(is_string($m['alt'] ?? null)?$m['alt']:'',250),'created_at'=>is_string($m['created_at'] ?? null)?$m['created_at']:gmdate('c')]);
     }
     public static function upload(Store $store,array $file,bool $public,string $alt=''): string {
-        if(($file['error'] ?? 1)!==UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'] ?? '')) throw new Failure('Choisissez un fichier valide (8 Mo maximum).');
-        Security::documentName(is_string($file['name'] ?? null)?$file['name']:'');
-        if(filesize($file['tmp_name'])>8*1024*1024) throw new Failure('Fichier limité à 8 Mo.',413);
-        $bytes=file_get_contents($file['tmp_name']); if(!is_string($bytes)) throw new Failure('Fichier illisible.');
-        $id=bin2hex(random_bytes(12)); $m=self::metadata(['id'=>$id,'name'=>$file['name'],'alt'=>$alt,'public'=>$public],$bytes);
-        $store->change(function(&$s)use($store,$id,$m,$bytes) { if(count($s['media'])>=2000) throw new Failure('Médiathèque limitée à 2 000 fichiers.',413); $store->writeMedia($m,$bytes); $s['media'][$id]=$m; Store::log($s,'media_uploaded',$m['name']); });
+        $id=Quarantine::capture($store,$file,'media',8*1048576);
+        Quarantine::validate($store,$id,static function(string $bytes,array $row)use($id,$public,$alt):array {
+            return self::metadata(['id'=>$id,'name'=>$row['name'],'alt'=>$alt,'public'=>$public],$bytes);
+        });
         return $id;
+    }
+    public static function release(Store $store,string $id,bool $reviewed): void {
+        if(!$reviewed)throw new Failure('Confirmez l’examen du fichier avant sa libération.');
+        $row=Quarantine::approved($store,$id,'media');$bytes=Quarantine::bytes($store,$id);
+        $m=self::metadata($row['inspection'],$bytes);$m['approval']=['at'=>gmdate('c'),'scan'=>$row['scan']];
+        $store->change(static function(&$s)use($store,$id,$m,$bytes):void {
+            if(($s['quarantine'][$id]['status']??'')!=='ready')throw new Failure('Dépôt déjà traité.',409);
+            if(count($s['media'])>=2000)throw new Failure('Médiathèque limitée à 2 000 fichiers.',413);
+            $store->writeMedia($m,$bytes);$s['media'][$id]=$m;$s['quarantine'][$id]['status']='consumed';Store::log($s,'media_released',$id);
+        });
+        Quarantine::consume($store,$id);
     }
 }

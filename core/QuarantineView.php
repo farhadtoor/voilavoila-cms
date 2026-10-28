@@ -1,0 +1,27 @@
+<?php
+declare(strict_types=1);
+defined('VV_ROOT') || exit;
+$deposits=array_reverse($vv->state['quarantine']??[],true);
+$statuses=['pending'=>t('En attente','Pending'),'ready'=>t('Validé, à examiner','Validated, awaiting review'),'blocked'=>t('Bloqué','Blocked'),'consumed'=>t('Traité','Processed')];
+$scans=['not_run'=>t('Non effectué','Not performed'),'not_configured'=>t('Antivirus non configuré','Antivirus not configured'),'clean'=>t('Antivirus : aucune détection','Antivirus: no detection'),'infected'=>t('Antivirus : détection','Antivirus: detection'),'unavailable'=>t('Antivirus indisponible','Antivirus unavailable')];
+?>
+<section class="panel"><h2><?=e(t('Les fichiers restent privés jusqu’à leur libération','Files stay private until release'))?></h2><p><?=e(t('Les dépôts ne sont ni publiés, ni exécutés. Les contrôles de format ne sont pas un antivirus. Configurez ClamAV et le mode antivirus obligatoire sur l’hébergement si vous exigez cette analyse avant toute libération.','Deposits are neither published nor executed. Format validation is not antivirus scanning. Configure ClamAV and required-antivirus mode on your hosting if scanning must precede every release.'))?></p><p class="hint"><?=e(t('Limites : 100 dépôts en attente, 128 Mo au total, expiration après 7 jours. La maintenance supprime les dépôts expirés.','Limits: 100 pending deposits, 128 MB total, expiration after 7 days. Maintenance removes expired deposits.'))?></p></section>
+<div class="quarantine-grid">
+<?php foreach($deposits as$id=>$row):if($row['status']==='consumed')continue;?>
+<article class="panel quarantine-card"><div class="panel-title"><h2><?=e($row['name'])?></h2><span class="badge <?=$row['status']==='ready'?'green':''?>"><?=e($statuses[$row['status']]??$row['status'])?></span></div>
+<p><?=e($row['purpose'])?> · <?=e(number_format($row['size']/1024,1))?> Ko · <?=e($row['created_at'])?></p><p class="hint"><?=e($scans[$row['scan']]??$row['scan'])?></p><details><summary>SHA-256</summary><code class="wrap-anywhere"><?=e($row['sha256'])?></code></details>
+<?php if(!empty($row['error'])):?><p class="notice error"><?=e($row['error'])?></p><?php endif;?>
+<?php if($row['status']==='ready'&&in_array($row['purpose'],['media','package','backup'],true)):
+ $action=match($row['purpose']){'media'=>'media.release','package'=>'package.apply','backup'=>'backup.apply'};
+ if($row['purpose']==='package'):$m=$row['inspection']['manifest'];?><p><strong><?=e($m['name'])?> <?=e($m['version'])?></strong> · <?=e($row['inspection']['operation'])?><?php if($row['inspection']['previous_version']):?> · <?=e($row['inspection']['previous_version'].' → '.$m['version'])?><?php endif;?></p><p class="hint">API <?=e($m['api'])?> · CMS ≥ <?=e($m['requires_cms']??'1.0.0')?> · PHP ≥ <?=e($m['requires_php']??'8.3')?> · <?=(int)$row['inspection']['file_count']?> <?=e(t('fichiers','files'))?></p><?php endif;?>
+ <?php if($row['purpose']==='media'):?><p><?=e($row['inspection']['mime'])?> · <?=e(!empty($row['inspection']['public'])?t('Destination : public','Destination: public'):t('Destination : privé','Destination: private'))?></p><?php endif;?>
+ <?php if($row['purpose']==='backup'):?><p><?=(int)$row['inspection']['contents']?> <?=e(t('contenus','contents'))?> · <?=(int)$row['inspection']['media']?> <?=e(t('médias','media'))?></p><?php endif;?>
+ <form method="post"><?=csrf_field()?><input type="hidden" name="action" value="<?=e($action)?>"><input type="hidden" name="qid" value="<?=e($id)?>">
+ <label class="checkbox"><input type="checkbox" name="reviewed" value="1" required><?=e(t('J’ai examiné la provenance et les résultats. J’autorise ce fichier ou ce code à entrer dans le site.','I reviewed the source and results. I authorize this file or code to enter the site.'))?></label>
+ <?php if($row['purpose']==='backup'):?><label><?=e(t('Saisissez RESTAURER','Type RESTAURER'))?><input name="confirm" pattern="RESTAURER" required></label><?php endif;?>
+ <label><?=e(t('Mot de passe actuel','Current password'))?><input type="password" name="current_password" autocomplete="current-password" required></label><button class="button primary"><?=e(match($row['purpose']){'media'=>t('Libérer dans la médiathèque','Release to media library'),'package'=>t('Installer le code sans activer','Install code without activating'),'backup'=>t('Restaurer la sauvegarde','Restore backup')})?></button></form>
+<?php elseif($row['purpose']==='import'):?><p><?=e(t('Import éditorial hors ligne : utilisez son écran de prévisualisation pour confirmer. Ce dépôt privé peut être supprimé après l’import.','Offline editorial import: use its preview screen to confirm. This private deposit can be removed after import.'))?></p><?php endif;?>
+<?=action_form('quarantine.reject',t('Supprimer le dépôt','Delete deposit'),['qid'=>$id],'danger small',true)?></article>
+<?php endforeach;?>
+</div>
+<?php if(!array_filter($deposits,fn($r)=>$r['status']!=='consumed')):?><section class="panel"><p><?=e(t('Aucun dépôt à examiner.','No deposits awaiting review.'))?></p></section><?php endif;?>

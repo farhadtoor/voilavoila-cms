@@ -1,17 +1,39 @@
-Options -Indexes
+# VoilaVoila CMS 1.5.0 — native front controllers only; relative rules also support /cms/.
+Options -Indexes -MultiViews
 DirectoryIndex index.php
-<IfModule mod_rewrite.c>
-RewriteEngine On
-RewriteRule ^content/plugins/wp-runtime/engine(?:/|$) - [F,L,NC]
-RewriteRule ^compat/ wp.php [L,QSA]
-RewriteRule ^assets/(?:ui|mod|core|admin|media)/ wp-assets.php [L,QSA]
-RewriteRule ^(?:core|storage|bin|sdk|docs|tests|tools|files)(?:/|$) - [F,L,NC]
-RewriteRule ^content/(?:plugins|themes)/.*\.php$ - [F,L,NC]
-RewriteRule (^|/)\.(?!well-known/) - [F,L]
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^ index.php [L,QSA]
+ServerSignature Off
+<IfModule !mod_rewrite.c>
+    Require all denied
 </IfModule>
-<FilesMatch "(?i)(^\.env|\.bak$|\.log$|\.sql$|\.xml$|\.md$|^Dockerfile$|^compose\.yaml$|^Lancer-Mac\.command$)">
-Require all denied
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule (^|/)\.(?!well-known(?:/|$)) - [F,END]
+    RewriteRule ^(?:core|storage|bin|tests|tools|sdk|docs|scripts|files|work)(?:/|$) - [F,END,NC]
+    RewriteRule ^content/plugins/[^/]+/(?:bin|lib|engine|vendor|docs|tests|runtime)(?:/|$) - [F,END,NC]
+    RewriteRule ^(?:robots\.txt|security\.txt|\.well-known/security\.txt)$ - [END]
+    RewriteRule ^\.well-known/acme-challenge/[A-Za-z0-9_-]+$ - [END]
+    RewriteRule ^(?:index|admin|login|media)\.php$ - [END]
+    RewriteRule \.(?:php[0-9]*|phtml|phar)(?:$|[/.]) - [F,END,NC]
+    RewriteRule \.(?:json|lock|md|yml|yaml|txt|log|sql|sqlite[0-9]*|db|bak|old|orig|dist|ini|sh|command|py|cjs|zip|tar|gz|map|conf)$ - [F,END,NC]
+    RewriteRule ^(?:Dockerfile|LICENSE|NOTICE|Makefile|Vagrantfile|INSTALLATION\.html)$ - [F,END,NC]
+    RewriteRule ^(?:assets|content/(?:plugins|themes)/[^/]+)/[^\x00]*\.(?:css|js|svg|png|jpe?g|gif|webp|ico|woff2?)$ - [END,NC]
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule !^$ - [F,END]
+    RewriteRule ^ index.php [END,QSA]
+</IfModule>
+<FilesMatch "(?i)(?:^\.|\.(?:php[0-9]*|phtml|phar)$)">
+    <If "%{REQUEST_FILENAME} !~ m#/(index|admin|login|media)\.php$#">
+        Require all denied
+    </If>
 </FilesMatch>
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
+    Header always unset X-Powered-By
+    <FilesMatch "(?i)\.svg$">
+        Header always set Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; sandbox"
+    </FilesMatch>
+</IfModule>

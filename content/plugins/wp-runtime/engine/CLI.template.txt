@@ -1,7 +1,0 @@
-<?php
-if(PHP_SAPI!=='cli')exit;
-define('VV_ENGINE_AUTHORIZED',true);define('VV_ENGINE_OWNER',true);
-$GLOBALS['vv_engine_config']=require __DIR__.'/engine-config.php';
-$GLOBALS['vv_engine_context']=['owner'=>true,'login'=>false,'guest'=>'','rule'=>null];
-$_SERVER['HTTP_HOST']=parse_url($GLOBALS['vv_engine_config']['public_url'],PHP_URL_HOST);
-$_SERVER['REQUEST_URI']='/compat/';$_SERVER['REQUEST_METHOD']='GET';$_SERVER['SERVER_PORT']='443';$_SERVER['HTTPS']='on';

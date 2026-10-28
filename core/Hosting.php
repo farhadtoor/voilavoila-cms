@@ -17,7 +17,7 @@ final class Hosting {
             $checks[]=['id'=>$id,'label_fr'=>$fr,'label_en'=>$en,'status'=>$status,'value'=>$value];
         };
         $add('php','Version PHP','PHP version',PHP_VERSION_ID>=80300?'ok':'error',PHP_VERSION);
-        foreach(['dom','mbstring','fileinfo','pdo_sqlite','gd','zip'] as $extension) {
+        foreach(['dom','mbstring','fileinfo','tokenizer','pdo_'.(getenv('VV_DB_DRIVER')?:'sqlite'),'gd','zip'] as $extension) {
             $ok=extension_loaded($extension);
             $add('extension_'.$extension,'Extension '.$extension,'Extension '.$extension,$ok?'ok':'error',$ok?'OK':'ABSENT');
         }

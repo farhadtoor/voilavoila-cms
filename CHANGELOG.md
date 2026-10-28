@@ -1,5 +1,10 @@
 # Changelog / Historique
 
+## 1.5.0
+
+Native 1.5 + editorial 1.6 combined. Reviewed ZIP updates/rollback, upload quarantine and ClamAV INSTREAM, editorial FR/EN comparison and counters, bilingual page navigation, searchable media and metadata, Apache/Nginx controller allowlists, PDO database drivers and private transfer. WordPress Runtime/porter/proxy entries removed; offline editorial import retained. See RELEASE-1.5.0-FR-EN.md.
+
+
 ## 1.4.0
 
 Combines roadmap J4 and technical J5: native SEO metadata and bilingual sitemap, WXR review, approved redirects, health/retention/locked maintenance, benchmark and SDK/pilot kit. Adds a persistent collapsible admin icon rail and VoilaVoila ! gold/white branding. SQLite schema 2 and API 1 retained; existing owner/OTP/data preserved. See RELEASE-1.4.0-FR-EN.md.

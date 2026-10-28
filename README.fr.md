@@ -1,82 +1,18 @@
-# VoilaVoila CMS
+# VoilaVoila CMS 1.5.0
 
-**Un petit CMS personnel auto-hébergé en PHP + SQLite, pour un propriétaire unique.** Publiez un profil, des pages et des articles ; gérez les médias ; ajoutez des thèmes et des extensions natifs.
+CMS personnel natif, propriétaire unique, FR/EN, PHP 8.3+ et SQLite par défaut.
+Native personal CMS, single owner, bilingual, PHP 8.3+, SQLite by default.
 
-[English](README.md) · [Installer](docs/fr/installation.md) · [Mettre à jour](UPGRADE-1.4.0-FR-EN.md) · [Contribuer](CONTRIBUTING.fr.md) · [Versions](https://github.com/farhadtoor/voilavoila-cms/releases)
+**Cette version regroupe 1.5 et 1.6 :** modules ZIP avec examen/mise à jour/retour arrière, quarantaine des dépôts, édition FR/EN, navigation, médias et couche de base interchangeable. Le moteur et le portage automatique WordPress ont été retirés ; seul l’import éditorial hors ligne est conservé.
 
-La version actuelle du moteur est la **1.4.0**. La branche `main` contient aussi la documentation bilingue et les vérifications de développement. Les instantanés historiques 1.0.0 et 1.1.0 restent documentés séparément.
+- [Notes 1.5 / Release](RELEASE-1.5.0-FR-EN.md)
+- [Installation et déploiement / Deployment](docs/DEPLOYMENT-1.5.0.md)
+- [Mise à jour 1.4 vers 1.5 / Upgrade](UPGRADE-1.5.0-FR-EN.md)
+- [Base interchangeable / Database](docs/DATABASE-1.5.0.md)
+- [Contrat natif / SDK](sdk/API.md)
+- [Validation locale / Local validation](VALIDATION-1.5.0.md)
 
-## Nouveautés 1.4.0
+`install.php` est fermé dans la configuration de production : utilisez la CLI ou le profil Web temporaire documenté. Les fichiers reçus passent par la quarantaine ; ClamAV est une intégration optionnelle à configurer sur l’hébergement et peut être rendu obligatoire.
 
-J4 et le travail technique de J5 sont regroupés : SEO bilingue, analyse WXR et redirections approuvées, santé locale, rétention, maintenance planifiée avec verrou, benchmark et kit SDK/pilote. La barre latérale se replie et mémorise le choix ; VoilaVoila ! utilise le dégradé doré/blanc. Propriétaire unique, SQLite et API 1 conservés.
+The production installer is closed. Use CLI or the documented temporary installation profile. Received files go through private quarantine; ClamAV must be separately configured on the host and can be made mandatory.
 
-[Upgrade FR/EN](UPGRADE-1.4.0-FR-EN.md) · [Release FR/EN](RELEASE-1.4.0-FR-EN.md) · [GitHub FR/EN](GITHUB-1.4.0-FR-EN.md).
-
-## Extensions 1.3.1
-
-WordPress Engine 0.2 : vrai moteur facultatif pour thèmes/plugins, profil de compatibilité WooCommerce et copie éditoriale. Authenticator OTP 1.0 : QR local, application TOTP et codes de secours, avec enforcement de session indépendant de l’activation des extensions.
-
-[Installer les extensions FR/EN](EXTENSIONS-ENGINE-OTP-FR-EN.md) · [OTP](docs/OTP.fr.md) · [Engine](docs/WP-RUNTIME.fr.md)
-
-## Nouveautés 1.3.0
-
-Forms et boîte privée SQLite, notifications différées et exports. Logo VoilaVoila original, drapeau français et signature de conception. WordPress Runtime facultatif et expérimental, séparé du CMS.
-
-[Forms](docs/FORMS.fr.md) · [Runtime](docs/WP-RUNTIME.fr.md) · [GitHub FR/EN](GITHUB-v1.3.0-FR-EN.md) · [Mise à jour](MISE-A-JOUR-1.3.0.md)
-
-## Nouveautés 1.2.1
-
-Archive plate vérifiée, diagnostic d’hébergement en lecture seule, compatibilité GD PHP 8.5 et CI sur le paquet avec véritable parcours navigateur. Identifiants, contenus et schéma SQLite conservés. [Mise à jour](MISE-A-JOUR-1.2.1.md) · [GitHub FR/EN](GITHUB-v1.2.1-FR-EN.md) · [Pilotes](docs/HOSTING-PILOT-FR-EN.md).
-
-## Fonctions
-
-- Profil public, pages et articles FR/EN, brouillons, aperçus privés et programmation des publications.
-- Jusqu’à 15 révisions par contenu et refus d’un enregistrement provenant d’un éditeur périmé.
-- Import JPG/JPEG/PNG/WebP et documents PDF/DOCX/ZIP/CSV ; octets/extensions conservés et liens dans l’éditeur.
-- Deux thèmes natifs et installation de ZIP de thèmes/extensions au format API 1.
-- Atelier privé, référencement/sitemap/RSS et lien PASS externe facultatif.
-- Sauvegarde/restauration éditoriale et import des pages/articles WordPress WXR 1.0–1.2.
-- Un propriétaire, avec clé d’installation côté serveur, mot de passe haché et code de récupération hors ligne.
-
-Les pages, articles et révisions sont enregistrés dans SQLite. Les accès PHP et les erreurs disposent chacun d’un journal texte. L’interface et ses ressources sont locales ; aucun Composer, build npm ou serveur de base de données externe n’est requis.
-
-## Essai local rapide
-
-Prérequis : **PHP 8.3+**, DOM, mbstring, fileinfo et PDO SQLite ; GD avec les codecs nécessaires pour les images ; ZIP pour les archives. Utilisez une branche PHP maintenue et ses correctifs récents. Python, Node et Docker servent au développement et restent facultatifs pour utiliser le CMS.
-
-Depuis le dossier du CMS :
-
-```sh
-export VV_STORAGE_PATH="$HOME/voilavoila-cms-local-data"
-php bin/console.php doctor
-php bin/console.php install-key
-php -d memory_limit=256M -d upload_max_filesize=64M -d post_max_size=70M -S 127.0.0.1:8787 router.php
-```
-
-Gardez le terminal ouvert, ouvrez [l’installateur local](http://127.0.0.1:8787/install.php), saisissez la clé générée et créez votre compte. Conservez hors ligne le code de récupération affiché une seule fois. Le serveur intégré est réservé aux essais. Pour publier un site, suivez le [guide HTTPS et protection du stockage](docs/fr/installation.md).
-
-[Les références des deux versions](docs/history/README.md) comprennent le guide et la validation de la première version en FR/EN.
-
-## Périmètre
-
-Le moteur vise un profil personnel et un trafic modéré. Il ne comprend pas d’inscription publique, de rôles multiples, de vente de billets ou de paiement. L’extension PASS ouvre une billetterie HTTPS existante. Certains concepts viennent de WordPress ; ses thèmes, plugins et fonctions `wp_*` nécessitent un portage. L’import WXR récupère les pièces jointes depuis un ZIP local, sans téléchargement HTTP ni migration des données métier.
-
-Une extension PHP native s’exécute avec les droits du processus de l’hébergement. Installez uniquement du code de confiance. Consultez les [protections](docs/fr/securite.md) et la [politique de signalement](SECURITY.md).
-
-## Documentation et développement
-
-Les guides couvrent l’[installation](docs/fr/installation.md), la [migration](docs/fr/mise-a-jour.md), l’[architecture et les versions](docs/fr/architecture.md), la [sécurité](docs/fr/securite.md), le [SDK](sdk/API.md), les [tests](docs/fr/tests.md), la [publication GitHub](docs/fr/publication.md) et la [communauté](docs/fr/communaute.md). Chaque guide dispose d’un équivalent anglais accessible dans le [README anglais](README.md).
-
-Vérifications : `python3 tools/check_repo.py` puis `python3 tests/run.py`. Les tests utilisent des copies temporaires et des données fictives. Lisez le guide de tests. Le workflow 1.2.1 construit et teste un ZIP commun sur PHP 8.3/8.4/8.5 et Chromium ; confirmer son résultat hébergé après publication du commit. Les rapports historiques et les tests rejouables actuels sont distingués dans le guide.
-
-## Participer et obtenir de l’aide
-
-Questions et présentations de sites : [Discussions](https://github.com/farhadtoor/voilavoila-cms/discussions). Bugs reproductibles et propositions précises : [Issues](https://github.com/farhadtoor/voilavoila-cms/issues). Français et anglais acceptés. Lisez [CONTRIBUTING](CONTRIBUTING.fr.md), [SUPPORT](SUPPORT.md), le [code de conduite](CODE_OF_CONDUCT.md) et la [feuille de route](ROADMAP.md).
-
-Le code est sous licence MIT. Le logo PASS fourni est exclu de cette licence ; voir [LICENSE](LICENSE) et [NOTICE](NOTICE). Aucun moteur WordPress ou de billetterie PASS n’est embarqué.
-
-## Nouveautés 1.2
-
-Documents téléchargeables, commentaires visiteurs modérés et import WordPress hors ligne. Les nouveaux plugins sont livrés désactivés.
-
-[Documents](docs/fr/documents.md) · [Commentaires](docs/fr/commentaires.md) · [WordPress](docs/fr/wordpress.md) · [Mise à jour](docs/fr/mise-a-jour-1.2.md) · [GitHub FR/EN](GITHUB-v1.2.0-FR-EN.md).

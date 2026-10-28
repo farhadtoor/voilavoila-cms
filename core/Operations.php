@@ -25,7 +25,7 @@ final class Operations {
         $points=self::points($app);$pending=['pending'=>0,'processing'=>0,'failed'=>0,'unknown'=>0];
         foreach($app->state['plugin_data']['forms']['rows']??[] as $r){$status=$r['notification']['status']??'';if(isset($pending[$status])&&($r['expires']??0)>time())$pending[$status]++;}
         $errorTail=Logger::read('error',true);$errors=substr_count($errorTail,'[ERROR]');
-        return ['format'=>1,'cms_version'=>VV_VERSION,'hosting'=>Hosting::report($app->store->dir),'storage'=>['bytes'=>$bytes,'entries_examined'=>min($files,5000),'partial'=>$truncated],'backups'=>['count'=>count($points),'latest_at'=>$points?gmdate('c',filemtime($points[0])):null],'forms_notifications'=>$pending,'errors_in_recent_tail'=>$errors,'maintenance'=>$app->state['operations']['last_run']??null,'policy'=>self::config($app),'extra_plugin_storage'=>is_dir($app->store->dir.'/pass-native')||is_dir($app->store->dir.'/wp-quarantine'),'telemetry'=>false,'scope'=>'Local diagnostics. Storage scan is bounded; exports contain no paths, credentials, request text or log lines. Editorial backup excludes separate plugin databases and executable code.'];
+        return ['format'=>1,'cms_version'=>VV_VERSION,'database'=>$app->store->databaseInfo(),'hosting'=>Hosting::report($app->store->dir),'storage'=>['bytes'=>$bytes,'entries_examined'=>min($files,5000),'partial'=>$truncated],'backups'=>['count'=>count($points),'latest_at'=>$points?gmdate('c',filemtime($points[0])):null],'forms_notifications'=>$pending,'errors_in_recent_tail'=>$errors,'maintenance'=>$app->state['operations']['last_run']??null,'policy'=>self::config($app),'extra_plugin_storage'=>is_dir($app->store->dir.'/pass-native'),'telemetry'=>false,'scope'=>'Local diagnostics. Storage scan is bounded; exports contain no paths, credentials, request text or log lines. Editorial backup excludes separate plugin databases and executable code.'];
     }
     private static function logs(App $app,int $days,float $deadline): int {
         $dir=$app->store->dir.'/logs';$changed=0;$lock=fopen($dir.'/rotation.lock','c+b');
@@ -57,6 +57,8 @@ final class Operations {
         try {
             $tasks=[
                 'expired_imports'=>fn()=>Migration::cleanup($app),
+                'quarantine_removed'=>fn()=>Quarantine::cleanup($app),
+                'package_backups_removed'=>fn()=>Packages::cleanup($app),
                 'log_lines_removed'=>fn()=>self::logs($app,$config['logs_days'],$deadline),
                 'backups_removed'=>fn()=>self::backups($app,$config),
                 'forms_expired'=>function()use($app){return in_array('forms',$app->state['plugins'],true)&&class_exists(Forms::class)?Forms::purgeExpired($app):0;},

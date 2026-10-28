@@ -3,6 +3,13 @@ services:
     build: .
     ports:
       - "127.0.0.1:8787:80"
+    environment:
+      VV_DB_DRIVER: ${VV_DB_DRIVER:-sqlite}
+      VV_DB_DSN: ${VV_DB_DSN:-}
+      VV_DB_USER: ${VV_DB_USER:-}
+      VV_DB_PASSWORD: ${VV_DB_PASSWORD:-}
+      VV_CLAMAV_SOCKET: ${VV_CLAMAV_SOCKET:-}
+      VV_QUARANTINE_REQUIRE_AV: ${VV_QUARANTINE_REQUIRE_AV:-0}
     volumes:
       - vv_cms_storage:/var/www/html/storage
       - vv_cms_modules:/var/www/html/content

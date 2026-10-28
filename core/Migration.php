@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace VV;
 defined('VV_ROOT') || exit;
-require_once __DIR__.'/WordPress.php';
+require_once __DIR__.'/EditorialImport.php';
 
 /** Owner-only, expiring WXR staging. Payloads remain PHP-guarded private bytes. */
 final class Migration {
@@ -39,13 +39,14 @@ final class Migration {
         try {
             self::cleanup($app);
             $options=['source_url'=>\val($options,'source_url'),'comments'=>!empty($options['comments']),'public_media'=>!empty($options['public_media'])];
-            $report=WordPress::run($app,$wxr,$publish,$uploads,$options+['preview'=>true]);
+            $report=EditorialImport::run($app,$wxr,$publish,$uploads,$options+['preview'=>true]);
             $existing=glob(self::directory($app).'/*.plan.php')?:[];
             usort($existing,fn($a,$b)=>filemtime($a)<=>filemtime($b));
             while(count($existing)>=2){$old=array_shift($existing);if(preg_match('/^([a-f0-9]{32})\.plan\.php$/D',basename($old),$m))self::remove($app,$m[1]);}
             $token=bin2hex(random_bytes(16));$xml=file_get_contents(Tools::uploaded($wxr,8*1048576));$zip='';
             if(($uploads['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_NO_FILE)$zip=file_get_contents(Tools::uploaded($uploads,64*1048576));
-            $record=['format'=>1,'created'=>time(),'expires'=>time()+3600,'owner_epoch'=>$app->state['owner']['epoch'],'publish'=>$publish,'options'=>$options,'xml_sha256'=>hash('sha256',$xml),'zip_sha256'=>hash('sha256',$zip),'report'=>$report];
+            $sourceQids=array_values(array_filter([Tools::uploadReceipt($wxr),Tools::uploadReceipt($uploads)]));
+            $record=['source_qids'=>$sourceQids,'format'=>1,'created'=>time(),'expires'=>time()+3600,'owner_epoch'=>$app->state['owner']['epoch'],'publish'=>$publish,'options'=>$options,'xml_sha256'=>hash('sha256',$xml),'zip_sha256'=>hash('sha256',$zip),'report'=>$report];
             try {
                 $app->store->privateWrite(self::path($app,$token,'wxr'),$xml);
                 if($zip!=='')$app->store->privateWrite(self::path($app,$token,'uploads'),$zip);
@@ -65,11 +66,13 @@ final class Migration {
         $lock=self::lock($app);
         try {
             $record=self::read($app,$token);
-            if(!hash_equals($record['report']['state_fingerprint'],WordPress::fingerprint($app->store->read())))throw new Failure('Le site a changé. Relancez la prévisualisation.',409);
+            if(empty($record['source_qids']))throw new Failure('Recommencez le dépôt avec le parcours de quarantaine 1.5.',410);
+            foreach($record['source_qids']as$qid)Quarantine::approved($app->store,$qid,'import');
+            if(!hash_equals($record['report']['state_fingerprint'],EditorialImport::fingerprint($app->store->read())))throw new Failure('Le site a changé. Relancez la prévisualisation.',409);
             $xml=$app->store->privateRead(self::path($app,$token,'wxr'));$zp=self::path($app,$token,'uploads');$zip=is_file($zp)?$app->store->privateRead($zp):'';
             if(!hash_equals($record['xml_sha256'],hash('sha256',$xml))||!hash_equals($record['zip_sha256'],hash('sha256',$zip)))throw new Failure('Intégrité de la prévisualisation incorrecte.',409);
-            $report=WordPress::staged($app,$xml,$record['publish'],$zip,$record['options']+['expected_fingerprint'=>$record['report']['state_fingerprint']]);
-            self::remove($app,$token);return $report;
+            $report=EditorialImport::staged($app,$xml,$record['publish'],$zip,$record['options']+['expected_fingerprint'=>$record['report']['state_fingerprint']]);
+            self::remove($app,$token);foreach($record['source_qids']as$qid)Quarantine::consume($app->store,$qid);return $report;
         }finally{flock($lock,LOCK_UN);fclose($lock);}
     }
 }

@@ -56,7 +56,7 @@ final class Redirects {
     }
     public static function approve(App $app,string $expected): int {
         $candidates=self::candidates($app);
-        return $app->store->change(function(&$s)use($candidates,$expected){if(!hash_equals(WordPress::fingerprint($s),$expected))throw new Failure('Les propositions ont changé. Rechargez et vérifiez les redirections.',409);$rows=$s['redirects']??[];foreach($candidates as $key=>$r){if(isset($rows[$key])&&$rows[$key]['content_id']!==$r['content_id'])throw new Failure('Une règle existante utilise déjà ce chemin.',409);$rows[$key]=$r;}$s['redirects']=self::validate($rows,$s['contents']);Store::log($s,'redirects_approved',(string)count($candidates));return count($candidates);});
+        return $app->store->change(function(&$s)use($candidates,$expected){if(!hash_equals(EditorialImport::fingerprint($s),$expected))throw new Failure('Les propositions ont changé. Rechargez et vérifiez les redirections.',409);$rows=$s['redirects']??[];foreach($candidates as $key=>$r){if(isset($rows[$key])&&$rows[$key]['content_id']!==$r['content_id'])throw new Failure('Une règle existante utilise déjà ce chemin.',409);$rows[$key]=$r;}$s['redirects']=self::validate($rows,$s['contents']);Store::log($s,'redirects_approved',(string)count($candidates));return count($candidates);});
     }
     public static function dispatch(App $app): void {
         if(!in_array($_SERVER['REQUEST_METHOD']??'GET',['GET','HEAD'],true))return;

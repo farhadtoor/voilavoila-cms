@@ -133,3 +133,14 @@ The guest comment form uses `Security::guestToken` / `guestPost` separately from
 [Versioned contracts / Contrats versionnés](../docs/MILESTONE-4-FR-EN.md) · [Installable maintenance example / Exemple installable](operations-example/README.md).
 
 Register value filters with `vv_action`; `vv_filter` applies them. `content_record_v1` runs inside the native transaction and must not start another transaction or external I/O. `maintenance_completed_v1` runs after commit; delivery is best effort. / Déclarez les filtres avec `vv_action`, gardez les callbacks de valeur purs et dédupliquez les événements avec leur identifiant.
+
+
+## CMS 1.5.0 — native security and storage contracts
+
+- `Store::read/change`, API 1 hooks, shortcodes and plugin_data remain the native boundary. Never query core SQL tables from a module. SQL now belongs to `DatabaseDriver` v1, with SQLite as default.
+- `Media::upload` / `Content::upload` return a **pending quarantine ID**, not immediately published media. Do not write raw uploaded bytes into public content or assume `state[media][id]` already exists. An owner review, CSRF and current-password check release media. Custom native modules own their code and must follow this intake contract.
+- `Quarantine::capture/validate/approved` protect incoming files, hashes and configured scan policy. Do not automatically approve untrusted code or replace scanner status with a clean verdict. Antivirus integration is not an antivirus engine.
+- Installing or updating a native package now stages a review. An inactive module is required before swapping code. Code plus the module’s own plugin_data is backed up; separate private files/databases require the module’s own backup strategy.
+- The bundled page-navigation editor adds `nav_label_fr/nav_label_en` to native content extras. `Navigation::items/label` expose published menu pages and labels. `Content::save` preserves these extras. Third-party themes can opt in without breaking the previous menu/order fields.
+- Media `alt_en` complements legacy `alt` (French/default). Original stored bytes and extensions remain unchanged.
+- WordPress execution, automatic code porter and proxy routes no longer exist. Offline editorial WXR import and historical import identifiers remain inert data.

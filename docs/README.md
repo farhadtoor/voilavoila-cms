@@ -1,23 +1,10 @@
-# Documentation / Documentation
+# Documentation 1.5.0
 
-Start with the [English README](../README.md) or the [README français](../README.fr.md).
+- [Déploiement et quarantaine](DEPLOYMENT-1.5.0.md)
+- [Bases interchangeables](DATABASE-1.5.0.md)
+- [Mise à jour](../UPGRADE-1.5.0-FR-EN.md)
+- [Fonctions livrées](../RELEASE-1.5.0-FR-EN.md)
+- [Validation](../VALIDATION-1.5.0.md)
 
-The `en` and `fr` folders contain the public bilingual guides. Existing French reference files remain available: [architecture](ARCHITECTURE.md), [security](SECURITE.md), [historical validation](VALIDATION.md) and the [full supplied 1.1.0 README](fr/reference-originale-1.1.0.md). The original README was moved into this folder, so any literal paths in that reference are relative to the application root, not this folder.
+Les documents de jalons plus anciens sont historiques. Le Runtime et le portage automatique de code WordPress ont été retirés en 1.5.0.
 
-Les dossiers `en` et `fr` contiennent les guides bilingues. Les rapports `verification-*.json` sont les rapports historiques des versions fournies ; ils ne prouvent pas une exécution de la CI GitHub. Les nouveaux tests sont expliqués dans [tests](fr/tests.md).
-
-## Livraison 1.2.1 / Delivery 1.2.1
-
-[Upgrade / Mise à jour](../MISE-A-JOUR-1.2.1.md) · [GitHub FR/EN](../GITHUB-v1.2.1-FR-EN.md) · [Milestone / Jalon 2](MILESTONE-2-FR-EN.md) · [Hosting pilots / Pilotes](HOSTING-PILOT-FR-EN.md).
-
-## 1.3
-
-[Forms FR](FORMS.fr.md) · [Forms EN](FORMS.md) · [WordPress Runtime FR](WP-RUNTIME.fr.md) · [WordPress Runtime EN](WP-RUNTIME.md) · [Testing](TESTING-1.3.md) · [GitHub FR/EN](../GITHUB-v1.3.0-FR-EN.md).
-
-## 1.3.1
-
-[OTP FR](OTP.fr.md) · [OTP EN](OTP.md) · [Installation FR/EN](../EXTENSIONS-ENGINE-OTP-FR-EN.md).
-
-## 1.4.0 — J4 + J5
-
-[Release FR/EN](../RELEASE-1.4.0-FR-EN.md) · [Upgrade FR/EN](../UPGRADE-1.4.0-FR-EN.md) · [GitHub](../GITHUB-1.4.0-FR-EN.md) · [Scope](MILESTONE-4-FR-EN.md) · [Pilot](PILOT-1.4.0-FR-EN.md).

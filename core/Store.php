@@ -5,28 +5,22 @@ defined('VV_ROOT') || exit;
 final class Failure extends \RuntimeException {
     public function __construct(string $message, public int $status=400) { parent::__construct($message); }
 }
-/** SQLite repository with a state-array API compatible with native extensions. */
+/** Stable state-array repository API. Database access is delegated to an interchangeable driver. */
 final class Store {
     public const GUARD="<?php http_response_code(404); exit; ?>\n";
-    private \PDO $db;
+    private DatabaseDriver $database;
     private bool $transaction=false;
     private const COLUMNS=['id','type','slug','status','title_fr','title_en','excerpt_fr','excerpt_en','body_fr','body_en','publish_at','created_at','updated_at','cover','pinned','menu','sort_order','version','tags','extra'];
     public function __construct(public string $dir) {
-        if(!extension_loaded('pdo_sqlite')) throw new Failure('Activez PHP pdo_sqlite pour utiliser le CMS.',503);
         if(!is_dir($dir) && !mkdir($dir,0700,true)) throw new Failure('Stockage indisponible.',503);
         if(!is_writable($dir)) throw new Failure('Le dossier storage doit être accessible en écriture.',503);
         foreach(['media','sessions','backups','legacy','logs'] as $part) if(!is_dir("$dir/$part") && !mkdir("$dir/$part",0700,true)) throw new Failure('Création du stockage impossible.',503);
-        if(!is_file($dir.'/.htaccess') && file_put_contents($dir.'/.htaccess',"Require all denied\n")===false) throw new Failure('Protection du stockage impossible.',503);
+        if(!is_file($dir.'/.htaccess') && file_put_contents($dir.'/.htaccess',"Require all denied\n<IfModule mod_php.c>\nphp_flag engine off\n</IfModule>\n")===false) throw new Failure('Protection du stockage impossible.',503);
         $lock=$this->lock(LOCK_EX);
         try {
-            $this->db=new \PDO('sqlite:'.$dir.'/cms.sqlite',null,null,[\PDO::ATTR_ERRMODE=>\PDO::ERRMODE_EXCEPTION,\PDO::ATTR_DEFAULT_FETCH_MODE=>\PDO::FETCH_ASSOC,\PDO::ATTR_TIMEOUT=>5]);
-            chmod($dir.'/cms.sqlite',0600);
-            $this->db->exec('PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON; PRAGMA synchronous=FULL; PRAGMA journal_mode=DELETE');
-            $version=(int)$this->db->query('PRAGMA user_version')->fetchColumn();
-            if(!in_array($version,[0,1],true)) throw new Failure('Version de base SQLite non prise en charge.',503);
-            $this->db->exec('BEGIN IMMEDIATE'); $this->transaction=true;
-            if($version===0) $this->createSchema();
-            if(!$this->db->query('SELECT COUNT(*) FROM cms_state')->fetchColumn()) {
+            $this->database=Database::connect($dir);
+            $this->database->begin(true); $this->transaction=true;
+            if(!$this->database->initialized()) {
                 if(is_file($dir.'/state.php')) {
                     $bytes=$this->privateRead($dir.'/state.php'); $s=json_decode($bytes,true,128,JSON_THROW_ON_ERROR);
                     if(!is_array($s) || ($s['schema'] ?? 0)!==1) throw new Failure('Stockage 1.0 invalide. Migration interrompue.',503);
@@ -46,18 +40,19 @@ final class Store {
                     $key=bin2hex(random_bytes(24)); $this->privateWrite($dir.'/setup-key.php',$key);
                     $s=['schema'=>2,'installed'=>false,'secret'=>bin2hex(random_bytes(32)),'setup_hash'=>hash('sha256',$key),'owner'=>[],'settings'=>[],'contents'=>[],'media'=>[],'plugins'=>[],'plugin_data'=>[],'audit'=>[],'limits'=>[]];
                 }
-                $this->writeState([],$s);
+                $this->database->write([],$s);
             }
-            $this->db->exec('COMMIT'); $this->transaction=false;
+            $this->database->commit(); $this->transaction=false;
             if(isset($s['migration']) && $s['migration']['from']==='1.0') $this->archiveLegacyMedia($s['media']);
         } catch(\Throwable $err) {
-            if($this->transaction) { try{$this->db->exec('ROLLBACK');}catch(\Throwable){} $this->transaction=false; }
+            if($this->transaction) { try{$this->database->rollback();}catch(\Throwable){} $this->transaction=false; }
             if($err instanceof Failure) throw $err;
             Logger::error('sqlite_initialization',$err->getMessage(),$err->getFile(),$err->getLine());
-            throw new Failure('Ouverture ou migration SQLite impossible. Sources conservées. Consultez error.txt.',503);
+            throw new Failure('Ouverture ou migration de la base impossible. Sources conservées. Consultez error.txt.',503);
         } finally { flock($lock,LOCK_UN); fclose($lock); }
     }
-    public function databasePath(): string { return $this->dir.'/cms.sqlite'; }
+    public function databasePath(): string { return $this->database->location(); }
+    public function databaseInfo(): array { return $this->database->info(); }
     private function archiveLegacyMedia(array $media): void {
         $dest=$this->dir.'/legacy/media';
         if(!is_dir($dest) && !@mkdir($dest,0700,true)) { Logger::error('migration_archive','Archivage des anciennes enveloppes média impossible'); return; }
@@ -66,57 +61,20 @@ final class Store {
             if(is_file($source) && !is_file($dest.'/'.$id.'.php') && !@rename($source,$dest.'/'.$id.'.php')) Logger::error('migration_archive','Ancienne enveloppe conservée : '.$id);
         }
     }
-    private function createSchema(): void {
-        $this->db->exec("CREATE TABLE cms_state (id INTEGER PRIMARY KEY CHECK(id=1), data TEXT NOT NULL);
-          CREATE TABLE contents (id TEXT PRIMARY KEY,type TEXT NOT NULL CHECK(type IN ('post','page')),slug TEXT NOT NULL UNIQUE,status TEXT NOT NULL CHECK(status IN ('draft','published','private','trash')),
-          title_fr TEXT NOT NULL,title_en TEXT NOT NULL,excerpt_fr TEXT NOT NULL,excerpt_en TEXT NOT NULL,body_fr TEXT NOT NULL,body_en TEXT NOT NULL,publish_at INTEGER NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,cover TEXT NOT NULL,
-          pinned INTEGER NOT NULL CHECK(pinned IN (0,1)),menu INTEGER NOT NULL CHECK(menu IN (0,1)),sort_order INTEGER NOT NULL,version INTEGER NOT NULL CHECK(version>=1),tags TEXT NOT NULL,extra TEXT NOT NULL);
-          CREATE INDEX contents_publication ON contents(type,status,publish_at); CREATE INDEX contents_modified ON contents(updated_at);
-          CREATE TABLE revisions (content_id TEXT NOT NULL REFERENCES contents(id) ON DELETE CASCADE,position INTEGER NOT NULL,data TEXT NOT NULL,PRIMARY KEY(content_id,position)); PRAGMA user_version=1;");
-    }
     private function lock(int $mode) {
         $f=fopen($this->dir.'/lock.php','c+b'); if(!$f || !flock($f,$mode)) throw new Failure('Verrouillage du stockage impossible.',503);
         if(fstat($f)['size']===0) { fwrite($f,self::GUARD); fflush($f); chmod($this->dir.'/lock.php',0600); } return $f;
     }
-    private function readState(): array {
-        $raw=$this->db->query('SELECT data FROM cms_state WHERE id=1')->fetchColumn(); if($raw===false) return [];
-        $s=json_decode($raw,true,128,JSON_THROW_ON_ERROR); $s['contents']=[];
-        foreach($this->db->query('SELECT * FROM contents ORDER BY created_at,id') as $r) {
-            $c=$r; unset($c['extra'],$c['sort_order']); $c['order']=(int)$r['sort_order']; $c['pinned']=(bool)$r['pinned']; $c['menu']=(bool)$r['menu'];
-            $c['version']=(int)$r['version']; $c['publish_at']=(int)$r['publish_at']; $c['tags']=json_decode($r['tags'],true,32,JSON_THROW_ON_ERROR);
-            $c=array_merge(json_decode($r['extra'],true,64,JSON_THROW_ON_ERROR),$c); $c['revisions']=[]; $s['contents'][$r['id']]=$c;
-        }
-        foreach($this->db->query('SELECT content_id,position,data FROM revisions ORDER BY content_id,position') as $r) $s['contents'][$r['content_id']]['revisions'][]=json_decode($r['data'],true,64,JSON_THROW_ON_ERROR);
-        return $s;
-    }
-    private function writeState(array $before,array $s): void {
-        $contents=$s['contents'] ?? []; unset($s['contents']); $s['schema']=2; $json=json_encode($s,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
-        if(strlen($json)>8*1024*1024) throw new Failure('Réglages et données des extensions limités à 8 Mo.',413);
-        $this->db->prepare('INSERT INTO cms_state(id,data) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data')->execute([$json]);
-        $old=$before['contents'] ?? []; $changed=[]; foreach($contents as $id=>$c) if(!isset($old[$id]) || $old[$id]!==$c) $changed[$id]=$c;
-        $delete=$this->db->prepare('DELETE FROM contents WHERE id=?');
-        foreach($old as $id=>$c) if(!isset($contents[$id]) || isset($changed[$id])) $delete->execute([$id]);
-        $insert=$this->db->prepare('INSERT INTO contents('.implode(',',self::COLUMNS).') VALUES('.implode(',',array_fill(0,count(self::COLUMNS),'?')).')');
-        $rev=$this->db->prepare('INSERT INTO revisions(content_id,position,data) VALUES(?,?,?)');
-        foreach($changed as $id=>$c) {
-            $values=[]; $known=array_fill_keys(array_merge(self::COLUMNS,['order','revisions']),true);
-            foreach(self::COLUMNS as $key) $values[]=match($key) {
-                'pinned','menu'=>(int)!empty($c[$key]),'sort_order'=>(int)($c['order'] ?? 10),'version'=>(int)($c['version'] ?? 1),'publish_at'=>(int)($c['publish_at'] ?? time()),
-                'tags'=>json_encode($c['tags'] ?? [],JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),'extra'=>json_encode(array_diff_key($c,$known),JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),default=>(string)($c[$key] ?? '')};
-            $insert->execute($values);
-            foreach(array_values(array_slice($c['revisions'] ?? [],-15)) as $n=>$snapshot) $rev->execute([$id,$n,json_encode($snapshot,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]);
-        }
-    }
     public function read(): array {
         if($this->transaction) throw new Failure('Lecture imbriquée dans une transaction non autorisée.',500); $lock=$this->lock(LOCK_SH);
-        try { $this->db->exec('BEGIN'); $this->transaction=true; $s=$this->readState(); $this->db->exec('COMMIT'); $this->transaction=false; return $s; }
-        catch(\Throwable $e) { if($this->transaction) { $this->db->exec('ROLLBACK'); $this->transaction=false; } throw $e; }
+        try { $this->database->begin(false); $this->transaction=true; $s=$this->database->read(); $this->database->commit(); $this->transaction=false; return $s; }
+        catch(\Throwable $e) { if($this->transaction) { $this->database->rollback(); $this->transaction=false; } throw $e; }
         finally { flock($lock,LOCK_UN); fclose($lock); }
     }
     public function change(callable $fn): mixed {
         if($this->transaction) throw new Failure('Transaction imbriquée non autorisée.',500); $lock=$this->lock(LOCK_EX);
-        try { $this->db->exec('BEGIN IMMEDIATE'); $this->transaction=true; $s=$this->readState(); $before=$s; $result=$fn($s); if($s!==$before) $this->writeState($before,$s); $this->db->exec('COMMIT'); $this->transaction=false; return $result; }
-        catch(\Throwable $e) { if($this->transaction) { $this->db->exec('ROLLBACK'); $this->transaction=false; } throw $e; }
+        try { $this->database->begin(true); $this->transaction=true; $s=$this->database->read(); $before=$s; $result=$fn($s); if($s!==$before) $this->database->write($before,$s); $this->database->commit(); $this->transaction=false; return $result; }
+        catch(\Throwable $e) { if($this->transaction) { $this->database->rollback(); $this->transaction=false; } throw $e; }
         finally { flock($lock,LOCK_UN); fclose($lock); }
     }
     private function atomicWrite(string $path,string $bytes,bool $guard): void {

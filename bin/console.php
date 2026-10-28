@@ -33,17 +33,21 @@ switch($command) {
             echo \VV\Forms::purgeExpired($vv)." requests purged.\n";
         } else echo json_encode(\VV\Forms::drain($vv),JSON_THROW_ON_ERROR).PHP_EOL;
         break;
-    case 'wp:quarantine:status': case 'wp:quarantine:prepare': case 'wp:plugin:wrap': case 'wp:theme:wrap':
-        require_once VV_ROOT.'/content/plugins/wp-runtime/Runtime.php';
-        if($command==='wp:quarantine:status') {
-            $cfg=\VV\WordPress\Runtime::config($vv);
-            echo json_encode(['enabled'=>\VV\WordPress\Runtime::enabled($vv),'public_url'=>$cfg['public_url'],'prepared'=>is_file($cfg['engine_root'].'/engine-config.php')],JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR).PHP_EOL;
-        } elseif($command==='wp:quarantine:prepare') {
-            $raw=stream_get_contents(STDIN,4097);if(strlen($raw)>4096)throw new \VV\Failure('Database input too large.');
-            $db=json_decode($raw,true,8,JSON_THROW_ON_ERROR);if(!is_array($db))throw new \VV\Failure('Database JSON required on stdin.');
-            echo \VV\WordPress\Runtime::prepare($vv,$argv[2]??'',$db).PHP_EOL;
-        } else echo \VV\WordPress\Runtime::wrap($vv,$argv[2]??'',$command==='wp:plugin:wrap'?'plugin':'theme').PHP_EOL;
-        break;
+    case 'install':
+        if($vv->state['installed'])throw new \VV\Failure('CMS déjà installé.',409);
+        $raw=stream_get_contents(STDIN,16385);if(strlen($raw)>16384)throw new \VV\Failure('Entrée trop volumineuse.');$input=json_decode($raw,true,8,JSON_THROW_ON_ERROR);
+        if(!is_array($input))throw new \VV\Failure('Objet JSON requis sur l’entrée standard.');
+        $name=\VV\Content::text(val($input,'name'));$email=val($input,'email');$password=val($input,'password');
+        if(!$name||!filter_var($email,FILTER_VALIDATE_EMAIL))throw new \VV\Failure('Nom et email valides requis.');Security::password($password);$recovery=bin2hex(random_bytes(16));
+        $vv->store->change(static function(&$state)use($name,$email,$password,$recovery):void {if($state['installed'])throw new \VV\Failure('CMS déjà installé.',409);$state=array_merge($state,\VV\App::seed($name,$email,$password));$state['installed']=true;$state['owner']['recovery']=Security::hash($recovery);unset($state['setup_hash']);Store::log($state,'installed_cli');});
+        @unlink($vv->store->dir.'/setup-key.php');echo "Installation terminée. Code de récupération à conserver hors ligne : ".$recovery.PHP_EOL;break;
+    case 'db:info':
+        echo json_encode($vv->store->databaseInfo(),JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR).PHP_EOL;break;
+    case 'db:export':
+        require_once VV_ROOT.'/core/DatabaseTransfer.php';\VV\DatabaseTransfer::export($vv->store,$argv[2]??'');echo "Transfert privé créé. Il contient les secrets du propriétaire. Copiez également le stockage des médias et les bases propres aux modules.\n";break;
+    case 'db:import':
+        if(!in_array('--confirm=IMPORTER',$argv,true))throw new \VV\Failure('Utilisez --confirm=IMPORTER vers une base neuve.');
+        require_once VV_ROOT.'/core/DatabaseTransfer.php';\VV\DatabaseTransfer::import($vv->store,$argv[2]??'');echo "Base importée. Vérifiez les médias et modules avant ouverture.\n";break;
     case 'install-key':
         if($vv->state['installed']) { fwrite(STDERR,"Le CMS est déjà installé.\n"); exit(1); }
         echo 'Clé : '.$vv->store->privateRead($vv->store->dir.'/setup-key.php')."\n"; break;
@@ -67,9 +71,9 @@ switch($command) {
         echo 'Stockage SQLite prêt : '.$vv->store->databasePath()."\nMigration automatique terminée ou déjà effectuée.\n"; break;
     case 'status':
         echo 'VoilaVoila CMS '.VV_VERSION."\nPHP ".PHP_VERSION."\n";
-        echo 'SQLite : '.$vv->store->databasePath()."\n";
+        echo 'Base : '.$vv->store->databasePath()."\n";
         echo 'Installé : '.($vv->state['installed']?'oui':'non')."\nContenus : ".count($vv->state['contents'])."\nMédias : ".count($vv->state['media'])."\n";
         foreach(['dom','mbstring','fileinfo','pdo_sqlite','gd','zip'] as $module) echo $module.' : '.(extension_loaded($module)?'OK':'ABSENT')."\n";
         break;
-    default: echo "VoilaVoila CMS\n\nphp bin/console.php health        Diagnostic local complet\nphp bin/console.php maintenance:run --budget=10 --limit=3  Maintenance/cron\nphp bin/console.php doctor        Diagnostic hébergement sans écriture\nphp bin/console.php doctor --json Rapport à partager sans secret\nphp bin/console.php forms:notifications  Traiter les notifications Forms\nphp bin/console.php forms:purge --confirm=PURGE  Purger les demandes expirées\nphp bin/console.php wp:quarantine:status  État du moteur facultatif\nphp bin/console.php wp:quarantine:prepare ZIP < private-db.json\nphp bin/console.php wp:plugin:wrap ZIP\nphp bin/console.php wp:theme:wrap ZIP\nphp bin/console.php install-key   Afficher la clé de première installation\nphp bin/console.php status        Vérifier la configuration\nphp bin/console.php reset-owner   Réinitialiser l’accès localement\nphp bin/console.php safe-mode     Désactiver les extensions et restaurer Profil Or\n";
+    default: echo "VoilaVoila CMS\n\nphp bin/console.php health        Diagnostic local complet\nphp bin/console.php maintenance:run --budget=10 --limit=3  Maintenance/cron\nphp bin/console.php doctor        Diagnostic hébergement sans écriture\nphp bin/console.php doctor --json Rapport à partager sans secret\nphp bin/console.php forms:notifications  Traiter les notifications Forms\nphp bin/console.php forms:purge --confirm=PURGE  Purger les demandes expirées\nphp bin/console.php install < /chemin/prive/installation.json  Première installation sans ouvrir install.php\nphp bin/console.php db:info       Pilote et contrats de la base\nphp bin/console.php db:export /chemin/prive/transfert.php\nphp bin/console.php db:import /chemin/prive/transfert.php --confirm=IMPORTER\nphp bin/console.php install-key   Afficher la clé de première installation\nphp bin/console.php status        Vérifier la configuration\nphp bin/console.php reset-owner   Réinitialiser l’accès localement\nphp bin/console.php safe-mode     Désactiver les extensions et restaurer Profil Or\n";
 }

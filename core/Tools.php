@@ -4,6 +4,7 @@ namespace VV;
 defined('VV_ROOT') || exit;
 
 final class Tools {
+    private static array $uploadReceipts=[];
     public static function settings(array $p,array $old,array $media): array {
         $s=$old;
         foreach(['title'=>200,'tagline'=>250,'bio'=>1500,'location'=>100,'footer'=>250,'socials'=>2000] as $k=>$len) $s[$k]=Content::text(\val($p,$k),$len);
@@ -25,7 +26,19 @@ final class Tools {
     public static function zip(): void { if(!class_exists('ZipArchive')) throw new Failure('Activez l’extension PHP ZIP pour cette opération.',503); }
     public static function uploaded(array $file,int $max): string {
         if(($file['error'] ?? 1)!==UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'] ?? '')) throw new Failure('Envoi incomplet. Vérifiez la limite upload_max_filesize de PHP.');
-        $p=$file['tmp_name']; if(filesize($p)<1 || filesize($p)>$max) throw new Failure('Archive trop volumineuse.',413); return $p;
+        $p=$file['tmp_name']; if(filesize($p)<1 || filesize($p)>$max) throw new Failure('Archive trop volumineuse.',413);
+        global $vv;
+        $key=$p.'|'.hash_file('sha256',$p);
+        if(isset($vv)&&$vv instanceof App&&!isset(self::$uploadReceipts[$key])) {
+            $qid=Quarantine::capture($vv->store,$file,'import',$max);
+            Quarantine::validate($vv->store,$qid,static fn($bytes)=>['bytes'=>strlen($bytes),'type'=>'offline-import']);
+            Quarantine::approved($vv->store,$qid,'import');self::$uploadReceipts[$key]=$qid;
+        }
+        return $p;
+    }
+    public static function uploadReceipt(array $file): ?string {
+        $path=$file['tmp_name']??'';
+        return is_string($path)&&is_file($path)?(self::$uploadReceipts[$path.'|'.hash_file('sha256',$path)]??null):null;
     }
     /** Reject traversal, symlinks, duplicates, encrypted entries and decompression bombs before extraction. */
     public static function zipEntries(\ZipArchive $zip,int $maxFiles=2200,int $maxBytes=67108864,int $maxFileBytes=8388608): array {
@@ -43,43 +56,7 @@ final class Tools {
         return $names;
     }
     public static function installPackage(App $app,array $file,string $type): string {
-        self::zip(); $path=self::uploaded($file,12*1024*1024); $zip=new \ZipArchive();
-        if($zip->open($path)!==true) throw new Failure('ZIP illisible.');
-        $stage='';
-        try {
-            $entries=self::zipEntries($zip,400,20*1024*1024); $candidates=[];
-            foreach($entries as $row) if($row['name']==='cms.json' || preg_match('~^[a-z][a-z0-9-]*/cms\.json$~D',$row['name'])) $candidates[]=$row;
-            if(count($candidates)!==1) throw new Failure('Ce ZIP doit contenir un manifeste cms.json pour VoilaVoila CMS. Les extensions WordPress doivent être portées.');
-            $manifest=$candidates[0]; if($manifest['size']>12000) throw new Failure('Manifeste trop volumineux.');
-            $m=json_decode($zip->getFromIndex($manifest['index']),true); $id=is_array($m)?($m['id'] ?? ''):'';
-            if(!is_string($id) || !preg_match('/^[a-z][a-z0-9-]{1,50}$/D',$id) || ($m['api'] ?? 0)!==1 || ($m['type'] ?? '')!==$type || !is_string($m['name'] ?? null)) throw new Failure('Manifeste de module incompatible.');
-            if(!App::compatible($m)) throw new Failure('Ce module demande une autre version du CMS ou de PHP.');
-            $folder=$type==='theme'?'themes':'plugins'; $target=VV_ROOT.'/content/'.$folder.'/'.$id;
-            if(file_exists($target)) throw new Failure('Ce module existe déjà. Mettez à jour ses fichiers par SFTP après sauvegarde.',409);
-            $prefix=$manifest['name']==='cms.json'?'':dirname($manifest['name']).'/';
-            $stage=VV_ROOT.'/content/'.$folder.'/.install-'.bin2hex(random_bytes(10));
-            if(!mkdir($stage,0700)) throw new Failure('Le dossier des modules doit être accessible en écriture.',503);
-            file_put_contents($stage.'/.htaccess',"Require all denied\n");
-            foreach($entries as $row) {
-                $n=$row['name']; if(!str_starts_with($n,$prefix)) throw new Failure('Tous les fichiers doivent être dans le même dossier.');
-                $rel=substr($n,strlen($prefix)); if($rel==='' || str_ends_with($rel,'/')) continue;
-                if(preg_match('~(?:^|/)\.~',$rel) || !preg_match('/\.(php|json|css|js|png|jpe?g|webp|woff2|md|txt)$/i',$rel)) throw new Failure('Fichier non autorisé dans le module.');
-                $to=$stage.'/'.$rel; if(!is_dir(dirname($to))) mkdir(dirname($to),0755,true);
-                $bytes=$zip->getFromIndex($row['index']); if($bytes===false || strlen($bytes)!==$row['size']) throw new Failure('Archive incomplète.');
-                if(file_put_contents($to,$bytes)!==strlen($bytes)) throw new Failure('Installation interrompue.',503);
-                chmod($to,0644);
-            }
-            $entry=$type==='theme'?'index.php':'plugin.php';
-            if(!is_file($stage.'/'.$entry)) throw new Failure('Point d’entrée '.$entry.' absent.');
-            if($type==='theme' && !is_file($stage.'/style.css')) throw new Failure('Le thème doit fournir style.css.');
-            // Stage denies requests; every installed PHP file must have a direct-access guard.
-            foreach(new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($stage,\FilesystemIterator::SKIP_DOTS)) as $f) {
-                if($f->getExtension()==='php' && !preg_match('/defined\s*\(\s*[\x27\x22]VV_ROOT[\x27\x22]\s*\)/',file_get_contents($f->getPathname()))) throw new Failure('Chaque fichier PHP doit vérifier defined("VV_ROOT").');
-            }
-            unlink($stage.'/.htaccess'); chmod($stage,0755);
-            if(!rename($stage,$target)) throw new Failure('Installation impossible.',503); $stage='';
-            $app->store->audit('package_installed',$type.':'.$id); return $id;
-        } finally { $zip->close(); if($stage && is_dir($stage)) self::removeTree($stage); }
+        return Packages::stage($app,$file,$type);
     }
     public static function removeTree(string $dir): void {
         if(is_link($dir)) { unlink($dir); return; }
@@ -118,7 +95,18 @@ final class Tools {
         return $id;
     }
     public static function restore(App $app,array $file): void {
-        self::zip(); $p=self::uploaded($file,64*1024*1024); $zip=new \ZipArchive();
+        $id=Quarantine::capture($app->store,$file,'backup',64*1048576);
+        Quarantine::validate($app->store,$id,static function($bytes):array {
+            $tmp=tempnam(sys_get_temp_dir(),'vv-backup-review-');file_put_contents($tmp,$bytes);$zip=new \ZipArchive();
+            try{if($zip->open($tmp)!==true)throw new Failure('Sauvegarde ZIP illisible.');$entries=self::zipEntries($zip);if(!isset($entries['data.json']))throw new Failure('data.json absent.');$data=json_decode($zip->getFromName('data.json'),true,80,JSON_THROW_ON_ERROR);if(($data['format']??'')!=='voilavoila-cms')throw new Failure('Format de sauvegarde incompatible.');return ['contents'=>count($data['contents']??[]),'media'=>count($data['media']??[])];}finally{try{$zip->close();}catch(\Throwable){}@unlink($tmp);}
+        });
+    }
+    public static function restoreApproved(App $app,string $id): void {
+        Quarantine::approved($app->store,$id,'backup');$bytes=Quarantine::bytes($app->store,$id);$tmp=tempnam(sys_get_temp_dir(),'vv-restore-');file_put_contents($tmp,$bytes);
+        try{self::restorePath($app,$tmp);Quarantine::consume($app->store,$id);}finally{@unlink($tmp);}
+    }
+    private static function restorePath(App $app,string $p): void {
+        self::zip(); $zip=new \ZipArchive();
         if($zip->open($p)!==true) throw new Failure('Sauvegarde illisible.');
         try {
             $entries=self::zipEntries($zip); if(!isset($entries['data.json'])) throw new Failure('data.json absent.');
@@ -134,7 +122,7 @@ final class Tools {
                 if(!isset($entries[strtolower($entry)])) throw new Failure('Média manquant.');
                 $bytes=$zip->getFromName($entry);
                 if(!hash_equals(\val($m,'sha256'),hash('sha256',$bytes))) throw new Failure('Intégrité du média incorrecte.');
-                $media[$id]=Media::metadata(['id'=>$id,'name'=>Content::text(\val($m,'name'),160),'public'=>!empty($m['public']),'alt'=>Content::text(\val($m,'alt'),250),'created_at'=>Content::timestamp(\val($m,'created_at'))],$bytes,($data['schema']===1));
+                $media[$id]=Media::metadata(['id'=>$id,'name'=>Content::text(\val($m,'name'),160),'public'=>!empty($m['public']),'alt'=>Content::text(\val($m,'alt'),250),'alt_en'=>Content::text(\val($m,'alt_en'),250),'created_at'=>Content::timestamp(\val($m,'created_at'))],$bytes,($data['schema']===1));
                 foreach(['wp_key','wp_source','wp_id'] as $key) if(is_string($m[$key] ?? null) && strlen($m[$key])<=400) $media[$id][$key]=$m[$key];
                 $mediaEntries[$id]=$entry;
             }
@@ -147,6 +135,15 @@ final class Tools {
                 foreach(['wp_source','wp_id','wp_link'] as $key) if(is_string($c[$key] ?? null) && strlen($c[$key])<=1000) $row[$key]=$c[$key];
                 if(isset($c['comments_open'])) $row['comments_open']=$c['comments_open']===true;
                 if(is_array($c['seo']??null))$row['seo']=Metadata::clean($c['seo']);
+                foreach(['fr','en']as$l)$row['nav_label_'.$l]=Content::text(\val($c,'nav_label_'.$l),80);
+                foreach(array_slice(is_array($c['revisions']??null)?$c['revisions']:[],-15)as$revision)if(is_array($revision)){
+                    $r=$row;unset($r['revisions']);
+                    foreach(['fr','en']as$l){$r['title_'.$l]=Content::text(\val($revision,'title_'.$l));$r['excerpt_'.$l]=Content::text(\val($revision,'excerpt_'.$l),400);$r['body_'.$l]=Content::html(Content::relocateMedia(\val($revision,'body_'.$l)));$r['nav_label_'.$l]=Content::text(\val($revision,'nav_label_'.$l),80);}
+                    $r['status']=in_array(\val($revision,'status'),['draft','published','private','trash'],true)?$revision['status']:'draft';$r['slug']=Content::slug(\val($revision,'slug'));$r['version']=max(1,(int)($revision['version']??1));$r['updated_at']=Content::timestamp(\val($revision,'updated_at'));$r['publish_at']=max(1,(int)($revision['publish_at']??time()));
+                    $r['tags']=array_values(array_filter(array_map(fn($tag)=>is_string($tag)?Content::text($tag,40):'',array_slice(is_array($revision['tags']??null)?$revision['tags']:[],0,12))));$r['menu']=!empty($revision['menu']);$r['pinned']=!empty($revision['pinned']);$r['order']=max(0,min(999,(int)($revision['order']??10)));
+                    $cover=\val($revision,'cover');$r['cover']=isset($media[$cover])&&$media[$cover]['public']&&str_starts_with($media[$cover]['mime'],'image/')?$cover:'';if(is_array($revision['seo']??null))$r['seo']=Metadata::clean($revision['seo']);$row['revisions'][]=$r;
+                }
+
                 foreach(array_slice(is_array($c['tags'] ?? null)?$c['tags']:[],0,12) as $tag) if(is_string($tag)) $row['tags'][]=Content::text($tag,40);
                 $cover=\val($c,'cover'); if(isset($media[$cover]) && $media[$cover]['public'] && str_starts_with($media[$cover]['mime'],'image/')) $row['cover']=$cover;
                 $contents[$id]=$row;
@@ -170,8 +167,8 @@ final class Tools {
         finally { $zip->close(); }
     }
     public static function wordpress(App $app,array $file,bool $publish,array $uploads=[],array $options=[]): int {
-        require_once __DIR__.'/WordPress.php';
-        $report=WordPress::run($app,$file,$publish,$uploads,$options);
+        require_once __DIR__.'/EditorialImport.php';
+        $report=EditorialImport::run($app,$file,$publish,$uploads,$options);
         return $report['imported'];
     }
 }

@@ -1,5 +1,6 @@
 {
-  "commit": "e28ce6a986d9a6e48d5c57ce96cd086307f2732f",
-  "format": 1,
-  "version": "1.4.0"
+  "version": "1.5.0",
+  "build_mode": "reviewed-local-source",
+  "source_sha256": "880336d98f83ed0ae933cc6922cb6210352cb279046d6f591c1e0a4942184324",
+  "private_data_included": false
 }

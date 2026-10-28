@@ -4,6 +4,7 @@ define('VV_ADMIN',true);
 require __DIR__.'/core/bootstrap.php';
 use VV\Security; use VV\Failure; use VV\App; use VV\Store; use VV\Content;
 if($vv->state['installed']) redirect(url('admin.php'));
+if((getenv('VV_ALLOW_WEB_INSTALL')?:($_SERVER['VV_ALLOW_WEB_INSTALL']??''))!=='1') fail_page('Installation Web fermée. Utilisez la commande CLI install ou le profil serveur temporaire documenté.',404);
 if(!Security::tls() && !Security::local()) fail_page('Ouvrez cette installation en HTTPS. Pour un essai local, utilisez localhost.',403);
 $error='';
 if(($_SERVER['REQUEST_METHOD'] ?? '')==='POST') {
