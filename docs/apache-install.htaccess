@@ -1,4 +1,4 @@
-# VoilaVoila CMS 1.5.0 — native front controllers only; relative rules also support /cms/.
+# VoilaVoila CMS 1.5.1 — native front controllers only; relative rules also support /cms/.
 Options -Indexes -MultiViews
 DirectoryIndex index.php
 ServerSignature Off
@@ -7,7 +7,6 @@ ServerSignature Off
 </IfModule>
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    SetEnv VV_ALLOW_WEB_INSTALL 1
     RewriteRule (^|/)\.(?!well-known(?:/|$)) - [F,END]
     RewriteRule ^(?:core|storage|bin|tests|tools|sdk|docs|scripts|files|work)(?:/|$) - [F,END,NC]
     RewriteRule ^content/plugins/[^/]+/(?:bin|lib|engine|vendor|docs|tests|runtime)(?:/|$) - [F,END,NC]

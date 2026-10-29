@@ -49,9 +49,9 @@ if(($_SERVER['REQUEST_METHOD'] ?? '')==='POST') {
             case 'media.upload':
                 Content::upload($vv->store,$_FILES['file'] ?? [],isset($_POST['public']),val($_POST,'alt')); $destination=admin_url('quarantine');$message=t('Fichier déposé en quarantaine. Examinez-le avant libération.','File quarantined. Review it before release.');break;
             case 'media.release':
-                Security::reauth($vv->store,val($_POST,'current_password'));\VV\Media::release($vv->store,val($_POST,'qid'),isset($_POST['reviewed']));$destination=admin_url('media');$message=t('Fichier libéré dans la médiathèque.','File released to the media library.');break;
+                Security::quarantineReauth($vv->store,val($_POST,'current_password'));\VV\Media::release($vv->store,val($_POST,'qid'),isset($_POST['reviewed']));$destination=admin_url('media');$message=t('Fichier libéré dans la médiathèque.','File released to the media library.');break;
             case 'quarantine.reject':
-                Security::reauth($vv->store,val($_POST,'current_password'));\VV\Quarantine::reject($vv->store,val($_POST,'qid'));break;
+                Security::quarantineReauth($vv->store,val($_POST,'current_password'));\VV\Quarantine::reject($vv->store,val($_POST,'qid'));break;
             case 'navigation.save':
                 \VV\Navigation::save($vv->store,$_POST);break;
             case 'media.update':
@@ -96,11 +96,11 @@ if(($_SERVER['REQUEST_METHOD'] ?? '')==='POST') {
                     Store::log($s,'plugin_toggled',$id);
                 }); break;
             case 'package.install':
-                Security::reauth($vv->store,val($_POST,'current_password')); $type=val($_POST,'type');
+                Security::quarantineReauth($vv->store,val($_POST,'current_password')); $type=val($_POST,'type');
                 if(!in_array($type,['theme','plugin'],true)) throw new Failure('Type invalide.');
                 Tools::installPackage($vv,$_FILES['package'] ?? [],$type);$destination=admin_url('quarantine');$message=t('Module déposé sans exécuter son code. Examinez le rapport avant installation.','Module deposited without executing its code. Review the report before installation.');break;
             case 'package.apply':
-                Security::reauth($vv->store,val($_POST,'current_password'));\VV\Packages::apply($vv,val($_POST,'qid'),isset($_POST['reviewed']));$destination=admin_url('quarantine');$message=t('Module installé. Activez-le depuis son écran après vérification.','Module installed. Activate it from its screen after review.');break;
+                Security::quarantineReauth($vv->store,val($_POST,'current_password'));\VV\Packages::apply($vv,val($_POST,'qid'),isset($_POST['reviewed']));$destination=admin_url('quarantine');$message=t('Module installé. Activez-le depuis son écran après vérification.','Module installed. Activate it from its screen after review.');break;
             case 'package.rollback':
                 Security::reauth($vv->store,val($_POST,'current_password'));\VV\Packages::rollback($vv,val($_POST,'token'));$message=t('Code et données du module restaurés ; module inactif.','Module code and data restored; module inactive.');break;
             case 'package.delete':
@@ -138,11 +138,11 @@ if(($_SERVER['REQUEST_METHOD'] ?? '')==='POST') {
                 header('Content-Type: application/zip'); header('Content-Disposition: attachment; filename="cms-point-'.$id.'.zip"');
                 $f=fopen($p,'rb'); fseek($f,strlen(Store::GUARD)); fpassthru($f); fclose($f); exit;
             case 'backup.restore':
-                Security::reauth($vv->store,val($_POST,'current_password'));
+                Security::quarantineReauth($vv->store,val($_POST,'current_password'));
                 if(val($_POST,'confirm')!=='RESTAURER') throw new Failure('Saisissez RESTAURER pour remplacer les contenus actuels.');
                 Tools::restore($vv,$_FILES['backup'] ?? []);$destination=admin_url('quarantine');$message=t('Sauvegarde placée en quarantaine avant restauration.','Backup quarantined before restoration.');break;
             case 'backup.apply':
-                Security::reauth($vv->store,val($_POST,'current_password'));if(!isset($_POST['reviewed'])||val($_POST,'confirm')!=='RESTAURER')throw new Failure('Confirmez l’examen et saisissez RESTAURER.');
+                Security::quarantineReauth($vv->store,val($_POST,'current_password'));if(!isset($_POST['reviewed'])||val($_POST,'confirm')!=='RESTAURER')throw new Failure('Confirmez l’examen et saisissez RESTAURER.');
                 Tools::restoreApproved($vv,val($_POST,'qid'));$destination=admin_url('tools');$message=t('Sauvegarde restaurée. Compte propriétaire conservé.','Backup restored. Owner account preserved.');break;
             case 'operations.save':
                 Security::reauth($vv->store,val($_POST,'current_password'));$policy=\VV\Operations::normalize($_POST);

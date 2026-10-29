@@ -22,7 +22,7 @@ La sauvegarde complète créée par l’outil est sous `VV_STORAGE_PATH/upgrade-
 
 ## Changements à connaître
 
-- `install.php`, `wp.php`, `wp-assets.php` et `router.php` sont refusés en production ; les deux passerelles WordPress sont aussi supprimées.
+- `install.php` est accessible par HTTP en local ou HTTPS sur le site, puis verrouillé après l’installation unique. `wp.php`, `wp-assets.php` et `router.php` restent refusés en production ; les passerelles WordPress sont supprimées.
 - Les nouveaux médias et ZIP de modules restent en quarantaine jusqu’à examen séparé. Une extension qui appelait `Media::upload` doit traiter l’identifiant retourné comme un dépôt en attente.
 - Les fichiers déjà publiés restent disponibles. Leurs octets ne sont pas réencodés.
 - Les points de retour de modules contiennent le code et les données `plugin_data` de ce module, pas ses bases/fichiers privés séparés.

@@ -7,7 +7,7 @@ if($mount!==''&&str_starts_with($path,$mount.'/'))$path=substr($path,strlen($mou
 $deny=preg_match('~(?:^|/)\\.(?!well-known(?:/|$))|^/(?:core|storage|bin|tests|tools|sdk|docs|scripts|files|work)(?:/|$)|^/content/plugins/[^/]+/(?:bin|lib|engine|vendor|docs|tests|runtime)(?:/|$)~i',$path);
 if($deny){http_response_code(404);exit;}
 $entry=preg_match('~^/(index|admin|login|media)\\.php$~D',$path);
-if($path==='/install.php'&&getenv('VV_ALLOW_WEB_INSTALL')==='1')$entry=true;
+if($path==='/install.php')$entry=true;
 if($entry)return false;
 if(preg_match('~\\.(?:php[0-9]*|phtml|phar)(?:$|[/.])|\\.(?:json|lock|md|yml|yaml|txt|log|sql|sqlite[0-9]*|db|bak|old|orig|dist|ini|sh|command|py|cjs|zip|tar|gz|map|conf)$|^/(?:Dockerfile|LICENSE|NOTICE|Makefile|Vagrantfile|INSTALLATION\\.html)$~i',$path)){
  if(in_array($path,['/robots.txt','/security.txt','/.well-known/security.txt'],true)&&is_file(__DIR__.$path))return false;

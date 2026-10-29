@@ -1,5 +1,13 @@
 # Changelog / Historique
 
+## 1.5.1
+
+- Keep the one-time Web installer available locally and over HTTPS; require the private setup key and lock it after owner creation.
+- Reuse quarantine password confirmation for 15 minutes per owner session while retaining the explicit review/approval step.
+- Align Apache, Nginx, local-router and generated Nginx allowlists with the one-time installer.
+
+Installateur Web simplifié avec clé à usage unique, confirmation de quarantaine valable 15 minutes et règles Apache/Nginx alignées.
+
 ## 1.5.0
 
 Native 1.5 + editorial 1.6 combined. Reviewed ZIP updates/rollback, upload quarantine and ClamAV INSTREAM, editorial FR/EN comparison and counters, bilingual page navigation, searchable media and metadata, Apache/Nginx controller allowlists, PDO database drivers and private transfer. WordPress Runtime/porter/proxy entries removed; offline editorial import retained. See RELEASE-1.5.0-FR-EN.md.

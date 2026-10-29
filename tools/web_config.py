@@ -3,7 +3,7 @@
 import argparse,re
 from pathlib import Path
 
-def nginx(root,mount,socket,server,install=False):
+def nginx(root,mount,socket,server):
     if not re.fullmatch(r'(?:/[a-zA-Z0-9_-]+)*',mount):raise ValueError('Use a simple mount path, e.g. /cms')
     for value in (root,socket,server):
         if not re.fullmatch(r'[a-zA-Z0-9_./:@-]+',value):raise ValueError('Unsafe configuration value')
@@ -19,12 +19,8 @@ def nginx(root,mount,socket,server,install=False):
         fastcgi_param HTTP_PROXY "";
         fastcgi_hide_header X-Powered-By;
         fastcgi_intercept_errors off;'''
-    setup=f'''location = {base}/install.php {{
-        {php}
-        fastcgi_param VV_ALLOW_WEB_INSTALL 1;
-    }}''' if install else f'location = {base}/install.php {{ return 404; }}'
     outside='location / { return 404; }' if mount else ''
-    return f'''# VoilaVoila CMS 1.5.0. Add TLS in the hosting configuration before exposing admin.
+    return f'''# VoilaVoila CMS 1.5.1. Add TLS in the hosting configuration before exposing admin.
 server {{
     listen 80;
     server_name {server};
@@ -41,8 +37,7 @@ server {{
     location = {base}/security.txt {{ default_type text/plain; try_files $uri =404; }}
     location = {base}/.well-known/security.txt {{ default_type text/plain; try_files $uri =404; }}
     location ~ ^{p}/\\.well-known/acme-challenge/[A-Za-z0-9_-]+$ {{ default_type text/plain; try_files $uri =404; }}
-    {setup}
-    location ~ ^{p}/(?:index|admin|login|media)\\.php$ {{
+    location ~ ^{p}/(?:index|admin|login|media|install)\\.php$ {{
         try_files $uri =404;
         {php}
     }}
@@ -65,7 +60,7 @@ server {{
 '''
 
 if __name__=='__main__':
-    a=argparse.ArgumentParser(description=__doc__);a.add_argument('--root',default='/var/www/voilavoila-cms');a.add_argument('--mount',default='');a.add_argument('--socket',default='/run/php/php8.3-fpm.sock');a.add_argument('--server',default='example.test');a.add_argument('--install',action='store_true');a.add_argument('--output',type=Path);args=a.parse_args()
-    text=nginx(args.root,args.mount.rstrip('/'),args.socket,args.server,args.install)
+    a=argparse.ArgumentParser(description=__doc__);a.add_argument('--root',default='/var/www/voilavoila-cms');a.add_argument('--mount',default='');a.add_argument('--socket',default='/run/php/php8.3-fpm.sock');a.add_argument('--server',default='example.test');a.add_argument('--output',type=Path);args=a.parse_args()
+    text=nginx(args.root,args.mount.rstrip('/'),args.socket,args.server)
     if args.output:args.output.write_text(text)
     else:print(text,end='')

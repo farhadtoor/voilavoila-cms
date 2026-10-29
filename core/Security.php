@@ -41,6 +41,7 @@ final class PrivateSessions implements \SessionHandlerInterface, \SessionUpdateT
 }
 
 final class Security {
+    private const QUARANTINE_REAUTH_TTL = 900;
     public static string $nonce;
     public static function nativeOrigin(): void {
         $expected=getenv('VV_CANONICAL_ORIGIN') ?: '';
@@ -208,5 +209,16 @@ final class Security {
     public static function reauth(Store $store, string $password): void {
         $store->rate('reauth',$_SERVER['REMOTE_ADDR'] ?? 'cli',10,900);
         if (!password_verify($password, $store->read()['owner']['hash'] ?? '')) throw new Failure('Mot de passe actuel incorrect.', 403);
+    }
+    public static function quarantineReauthRequired(): bool {
+        $verified=(int)($_SESSION['auth']['quarantine_reauth_at'] ?? 0);
+        return $verified < time()-self::QUARANTINE_REAUTH_TTL;
+    }
+    public static function quarantineReauth(Store $store, string $password): void {
+        if(!self::quarantineReauthRequired()) return;
+        $store->rate('reauth',$_SERVER['REMOTE_ADDR'] ?? 'cli',10,900);
+        if(!password_verify($password,$store->read()['owner']['hash'] ?? '')) throw new Failure('Mot de passe actuel incorrect.',403);
+        $_SESSION['auth']['quarantine_reauth_at']=time();
+        $store->audit('quarantine_reauth_success');
     }
 }

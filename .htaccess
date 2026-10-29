@@ -1,4 +1,4 @@
-# VoilaVoila CMS 1.5.0 — native front controllers only; relative rules also support /cms/.
+# VoilaVoila CMS 1.5.1 — native front controllers only; relative rules also support /cms/.
 Options -Indexes -MultiViews
 DirectoryIndex index.php
 ServerSignature Off
@@ -12,7 +12,7 @@ ServerSignature Off
     RewriteRule ^content/plugins/[^/]+/(?:bin|lib|engine|vendor|docs|tests|runtime)(?:/|$) - [F,END,NC]
     RewriteRule ^(?:robots\.txt|security\.txt|\.well-known/security\.txt)$ - [END]
     RewriteRule ^\.well-known/acme-challenge/[A-Za-z0-9_-]+$ - [END]
-    RewriteRule ^(?:index|admin|login|media)\.php$ - [END]
+    RewriteRule ^(?:index|admin|login|media|install)\.php$ - [END]
     RewriteRule \.(?:php[0-9]*|phtml|phar)(?:$|[/.]) - [F,END,NC]
     RewriteRule \.(?:json|lock|md|yml|yaml|txt|log|sql|sqlite[0-9]*|db|bak|old|orig|dist|ini|sh|command|py|cjs|zip|tar|gz|map|conf)$ - [F,END,NC]
     RewriteRule ^(?:Dockerfile|LICENSE|NOTICE|Makefile|Vagrantfile|INSTALLATION\.html)$ - [F,END,NC]
@@ -23,7 +23,7 @@ ServerSignature Off
     RewriteRule ^ index.php [END,QSA]
 </IfModule>
 <FilesMatch "(?i)(?:^\.|\.(?:php[0-9]*|phtml|phar)$)">
-    <If "%{REQUEST_FILENAME} !~ m#/(index|admin|login|media)\.php$#">
+    <If "%{REQUEST_FILENAME} !~ m#/(index|admin|login|media|install)\.php$#">
         Require all denied
     </If>
 </FilesMatch>
